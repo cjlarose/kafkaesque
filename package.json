@@ -1,0 +1,7 @@
+{
+  "name": "kafkaesque",
+  "version": "0.1.0",
+  "main": "index.js",
+  "author": "Chris LaRose",
+  "license": "MIT"
+}
