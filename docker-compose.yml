@@ -6,7 +6,3 @@ services:
     - "5000:5000"
     volumes:
     - .:/usr/src/app
-    links:
-    - postgres
-  postgres:
-    image: postgres
