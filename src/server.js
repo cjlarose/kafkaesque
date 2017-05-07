@@ -17,11 +17,22 @@ function handleConnection(conn) {
 
   function onData(buffer) {
     console.log('connection data from %s:', remoteAddress);
+    console.log(`${buffer.length} bytes`);
     for (const pair of  buffer.entries()) {
       const [idx, byte] = pair;
       const val = byte.toString(16);
       process.stdout.write(val.length == 2 ? val : `0${val}`);
-      process.stdout.write(' ');
+
+      if (idx % 16 == 15) {
+        process.stdout.write(' | ');
+        for (let i = idx - 15; i <= idx; i++) {
+          const byteToPrint = buffer[i];
+          process.stdout.write(byteToPrint >= 32 && byteToPrint <= 126 ? String.fromCharCode(byteToPrint) : '.');
+        }
+        process.stdout.write("\n");
+      } else {
+        process.stdout.write(' ');
+      }
     }
     console.log();
   }
