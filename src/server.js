@@ -53,6 +53,7 @@ function handleConnection(conn) {
   console.log('new client connection from %s', remoteAddress);
 
   conn.on('data', onData);
+  conn.on('end', onEnd);
   conn.once('close', onClose);
   conn.on('error', onError);
 
@@ -74,6 +75,10 @@ function handleConnection(conn) {
       hexdump(response);
       conn.write(response);
     }
+  }
+
+  function onEnd() {
+    console.log('received FIN from connection from %s', remoteAddress);
   }
 
   function onClose() {
