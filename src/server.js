@@ -1,14 +1,6 @@
 const net = require('net');
 const { API_KEY } = require('./constants');
 
-const server = net.createServer();  
-server.on('connection', handleConnection);
-
-server.listen(9092, () => {
-  console.log('server listening to %j', server.address());
-});
-
-
 const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x01, // broker array length = 1
   0x00, 0x00, 0x00, 0x00, // node_id
@@ -29,14 +21,9 @@ const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x00, // isr 0
 ]);
 
-function handleConnection(conn) {  
-  const remoteAddress = `${conn.remoteAddress}:${conn.remotePort}`;
+function handleConnection(socket) {
+  const remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
   console.log('new client connection from %s', remoteAddress);
-
-  conn.on('data', onData);
-  conn.on('end', onEnd);
-  conn.once('close', onClose);
-  conn.on('error', onError);
 
   function onData(buffer) {
     console.log('connection data from %s:', remoteAddress);
@@ -47,12 +34,12 @@ function handleConnection(conn) {
     console.log(`api_key: ${apiKey}`);
     console.log(`correlation_id: ${correlationId}`);
 
-    if (apiKey == API_KEY.METADATA) {
+    if (apiKey === API_KEY.METADATA) {
       const response = Buffer.alloc(metadataResponseBody.length + 8);
       response.writeInt32BE(metadataResponseBody.length + 4, 0);
       response.writeInt32BE(correlationId, 4);
       metadataResponseBody.copy(response, 8);
-      conn.write(response);
+      socket.write(response);
     }
   }
 
@@ -67,4 +54,16 @@ function handleConnection(conn) {
   function onError(err) {
     console.log('Connection %s error: %s', remoteAddress, err.message);
   }
+
+  socket.on('data', onData);
+  socket.on('end', onEnd);
+  socket.once('close', onClose);
+  socket.on('error', onError);
 }
+
+const server = net.createServer();
+server.on('connection', handleConnection);
+
+server.listen(9092, () => {
+  console.log('server listening to %j', server.address());
+});
