@@ -28,26 +28,6 @@ const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x00, // isr 0
 ]);
 
-function hexdump(buffer) {
-  for (const pair of  buffer.entries()) {
-    const [idx, byte] = pair;
-    const val = byte.toString(16);
-    process.stdout.write(val.length == 2 ? val : `0${val}`);
-
-    if (idx % 16 == 15) {
-      process.stdout.write(' | ');
-      for (let i = idx - 15; i <= idx; i++) {
-        const byteToPrint = buffer[i];
-        process.stdout.write(byteToPrint >= 32 && byteToPrint <= 126 ? String.fromCharCode(byteToPrint) : '.');
-      }
-      process.stdout.write("\n");
-    } else {
-      process.stdout.write(' ');
-    }
-  }
-  console.log();
-}
-
 function handleConnection(conn) {  
   const remoteAddress = `${conn.remoteAddress}:${conn.remotePort}`;
   console.log('new client connection from %s', remoteAddress);
@@ -60,7 +40,6 @@ function handleConnection(conn) {
   function onData(buffer) {
     console.log('connection data from %s:', remoteAddress);
     console.log(`${buffer.length} bytes`);
-    hexdump(buffer);
 
     const apiKey = buffer.readInt16BE(4);
     const correlationId = buffer.readInt32BE(8);
@@ -72,7 +51,6 @@ function handleConnection(conn) {
       response.writeInt32BE(metadataResponseBody.length + 4, 0);
       response.writeInt32BE(correlationId, 4);
       metadataResponseBody.copy(response, 8);
-      hexdump(response);
       conn.write(response);
     }
   }
