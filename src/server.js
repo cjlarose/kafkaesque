@@ -1,4 +1,5 @@
 const net = require('net');
+const { API_KEY } = require('./constants');
 
 const server = net.createServer();  
 server.on('connection', handleConnection);
@@ -46,7 +47,7 @@ function handleConnection(conn) {
     console.log(`api_key: ${apiKey}`);
     console.log(`correlation_id: ${correlationId}`);
 
-    if (apiKey == 3) {
+    if (apiKey == API_KEY.METADATA) {
       const response = Buffer.alloc(metadataResponseBody.length + 8);
       response.writeInt32BE(metadataResponseBody.length + 4, 0);
       response.writeInt32BE(correlationId, 4);
