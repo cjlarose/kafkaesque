@@ -1,0 +1,97 @@
+const Transform = require('stream').Transform;
+
+class BufferList {
+  constructor() {
+    // TODO: Replace buffers Array with Deque for O(1) shift and push
+    this.buffers = [];
+    this.length = 0;
+  }
+
+  append(buffer) {
+    this.buffers.push(buffer);
+    this.length += buffer.length;
+  }
+
+  unshiftBytes(length) {
+    if (length > this.length) {
+      throw new Error('Not enough bytes in buffers');
+    }
+
+    const outputBuffer = Buffer.allocUnsafe(length);
+    let offset = 0;
+
+    while (offset < length) {
+      const buffer = this.buffers[0];
+      const bytesToCopy = Math.min(length - offset, buffer.length);
+      buffer.copy(outputBuffer, offset, 0, bytesToCopy);
+      offset += bytesToCopy;
+
+      if (bytesToCopy === buffer.length) {
+        this.buffers.shift();
+      } else {
+        this.buffers[0] = buffer.slice(bytesToCopy);
+      }
+
+      this.length -= bytesToCopy;
+    }
+
+    return outputBuffer;
+  }
+}
+
+class Decoder extends Transform {
+  constructor(options) {
+    super(options);
+
+    this.expectedLength = null;
+    this.bufferList = new BufferList();
+  }
+
+  extractMessageLength() {
+    if (this.bufferList.length < Decoder.lengthPrefixSize) {
+      return null;
+    }
+
+    const lengthBuffer = this.bufferList.unshiftBytes(Decoder.lengthPrefixSize);
+    const length = lengthBuffer.readInt32BE(0);
+
+    if (length < 0) {
+      throw new Error('Negative length not allowed');
+    }
+
+    return length;
+  }
+
+  constructOutputBuffer() {
+    if (this.expectedLength === null) {
+      this.expectedLength = this.extractMessageLength();
+    }
+
+    if (this.expectedLength === null || this.bufferList.length < this.expectedLength) {
+      return null;
+    }
+
+    const outputBuffer = this.bufferList.unshiftBytes(this.expectedLength);
+    this.expectedLength = null;
+
+    return outputBuffer;
+  }
+
+  _transform(chunk, _, callback) {
+    this.bufferList.append(chunk);
+
+    let outputBuffer;
+
+    while (outputBuffer = this.constructOutputBuffer()) {
+      this.push(outputBuffer);
+    }
+
+    callback();
+  }
+}
+
+Decoder.lengthPrefixSize = 4;
+
+module.exports = {
+  Decoder,
+};
