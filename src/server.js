@@ -3,7 +3,7 @@ const net = require('net');
 const server = net.createServer();  
 server.on('connection', handleConnection);
 
-server.listen(5000, () => {  
+server.listen(9092, () => {
   console.log('server listening to %j', server.address());
 });
 
@@ -13,7 +13,7 @@ const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x00, // node_id
   0x00, 0x09, // broker host name length
   0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, // localhost
-  0x00, 0x00, 0x13, 0x88, // port
+  0x00, 0x00, 0x23, 0x84, // port
   0x00, 0x00, 0x00, 0x01, // topic metadata array length
   0x00, 0x00, // topic error code
   0x00, 0x04, // topic name length

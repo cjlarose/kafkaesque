@@ -8,6 +8,6 @@ RUN yarn install
 
 COPY . /usr/src/app
 
-EXPOSE 5000
+EXPOSE 9092
 
 CMD ["node", "/usr/src/app/src/server.js"]

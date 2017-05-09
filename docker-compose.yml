@@ -3,6 +3,6 @@ services:
   kafkaesque:
     build: .
     ports:
-    - "5000:5000"
+    - "9092:9092"
     volumes:
     - .:/usr/src/app
