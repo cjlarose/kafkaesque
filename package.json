@@ -3,5 +3,8 @@
   "version": "0.1.0",
   "main": "index.js",
   "author": "Chris LaRose",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  }
 }
