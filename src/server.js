@@ -1,5 +1,6 @@
 const net = require('net');
 const { API_KEY } = require('./constants');
+const LengthPrefixedFrame = require('./length_prefixed_frame');
 
 const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x01, // broker array length = 1
@@ -28,10 +29,9 @@ function handleRequest(requestBuffer) {
   console.log(`correlation_id: ${correlationId}`);
 
   if (apiKey === API_KEY.METADATA) {
-    const response = Buffer.alloc(metadataResponseBody.length + 8);
-    response.writeInt32BE(metadataResponseBody.length + 4, 0);
-    response.writeInt32BE(correlationId, 4);
-    metadataResponseBody.copy(response, 8);
+    const response = Buffer.alloc(metadataResponseBody.length + 4);
+    response.writeInt32BE(correlationId, 0);
+    metadataResponseBody.copy(response, 4);
     return response;
   }
 
@@ -41,17 +41,6 @@ function handleRequest(requestBuffer) {
 function handleConnection(socket) {
   const remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
   console.log('new client connection from %s', remoteAddress);
-
-  function onData(buffer) {
-    console.log('connection data from %s:', remoteAddress);
-    console.log(`${buffer.length} bytes`);
-
-    const requestBuffer = buffer.slice(4);
-    const responseBuffer = handleRequest(requestBuffer);
-    if (responseBuffer !== null) {
-      socket.write(responseBuffer);
-    }
-  }
 
   function onEnd() {
     console.log('received FIN from connection from %s', remoteAddress);
@@ -65,10 +54,24 @@ function handleConnection(socket) {
     console.log('Connection %s error: %s', remoteAddress, err.message);
   }
 
-  socket.on('data', onData);
   socket.on('end', onEnd);
   socket.once('close', onClose);
   socket.on('error', onError);
+
+  const clientFrames = new LengthPrefixedFrame.Decoder();
+  socket.pipe(clientFrames);
+
+  const serverFrames = new LengthPrefixedFrame.Encoder();
+  serverFrames.pipe(socket);
+
+  function handleClientFrame(buffer) {
+    const responseFrame = handleRequest(buffer);
+    if (responseFrame !== null) {
+      serverFrames.write(responseFrame);
+    }
+  }
+
+  clientFrames.on('data', handleClientFrame);
 }
 
 const server = net.createServer();
