@@ -1,5 +1,7 @@
 const Transform = require('stream').Transform;
 
+const LENGTH_PREFIX_SIZE = 4;
+
 class BufferList {
   constructor() {
     // TODO: Replace buffers Array with Deque for O(1) shift and push
@@ -48,11 +50,11 @@ class Decoder extends Transform {
   }
 
   extractMessageLength() {
-    if (this.bufferList.length < Decoder.lengthPrefixSize) {
+    if (this.bufferList.length < LENGTH_PREFIX_SIZE) {
       return null;
     }
 
-    const lengthBuffer = this.bufferList.unshiftBytes(Decoder.lengthPrefixSize);
+    const lengthBuffer = this.bufferList.unshiftBytes(LENGTH_PREFIX_SIZE);
     const length = lengthBuffer.readInt32BE(0);
 
     if (length < 0) {
@@ -89,8 +91,6 @@ class Decoder extends Transform {
     callback();
   }
 }
-
-Decoder.lengthPrefixSize = 4;
 
 module.exports = {
   Decoder,
