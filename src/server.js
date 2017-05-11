@@ -21,6 +21,23 @@ const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x00, // isr 0
 ]);
 
+function handleRequest(requestBuffer) {
+  const apiKey = requestBuffer.readInt16BE(0);
+  const correlationId = requestBuffer.readInt32BE(4);
+  console.log(`api_key: ${apiKey}`);
+  console.log(`correlation_id: ${correlationId}`);
+
+  if (apiKey === API_KEY.METADATA) {
+    const response = Buffer.alloc(metadataResponseBody.length + 8);
+    response.writeInt32BE(metadataResponseBody.length + 4, 0);
+    response.writeInt32BE(correlationId, 4);
+    metadataResponseBody.copy(response, 8);
+    return response;
+  }
+
+  return null;
+}
+
 function handleConnection(socket) {
   const remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
   console.log('new client connection from %s', remoteAddress);
@@ -29,17 +46,10 @@ function handleConnection(socket) {
     console.log('connection data from %s:', remoteAddress);
     console.log(`${buffer.length} bytes`);
 
-    const apiKey = buffer.readInt16BE(4);
-    const correlationId = buffer.readInt32BE(8);
-    console.log(`api_key: ${apiKey}`);
-    console.log(`correlation_id: ${correlationId}`);
-
-    if (apiKey === API_KEY.METADATA) {
-      const response = Buffer.alloc(metadataResponseBody.length + 8);
-      response.writeInt32BE(metadataResponseBody.length + 4, 0);
-      response.writeInt32BE(correlationId, 4);
-      metadataResponseBody.copy(response, 8);
-      socket.write(response);
+    const requestBuffer = buffer.slice(4);
+    const responseBuffer = handleRequest(requestBuffer);
+    if (responseBuffer !== null) {
+      socket.write(responseBuffer);
     }
   }
 
