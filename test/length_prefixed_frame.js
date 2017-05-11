@@ -181,3 +181,27 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xBE]), Buffer.from([0xEF])]);
   });
 });
+
+describe('LengthPrefixedFrame.Encoder', () => {
+  it('should write 0-length message', () => {
+    const encoder = new LengthPrefixedFrame.Encoder();
+    const collector = new Collector();
+    encoder.pipe(collector);
+
+    const input = Buffer.alloc(0);
+    encoder.write(input);
+
+    assert.deepEqual(collector.chunks, [Buffer.from([0x00, 0x00, 0x00, 0x00])]);
+  });
+
+  it('should write length and message', () => {
+    const encoder = new LengthPrefixedFrame.Encoder();
+    const collector = new Collector();
+    encoder.pipe(collector);
+
+    const input = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF]);
+    encoder.write(input);
+
+    assert.deepEqual(collector.chunks, [Buffer.from([0x00, 0x00, 0x00, 0x08]), input]);
+  });
+});

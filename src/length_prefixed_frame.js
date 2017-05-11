@@ -92,6 +92,17 @@ class Decoder extends Transform {
   }
 }
 
+class Encoder extends Transform {
+  _transform(chunk, _, callback) {
+    const lengthBuffer = Buffer.alloc(4);
+    lengthBuffer.writeIntBE(chunk.length, 0, LENGTH_PREFIX_SIZE);
+    this.push(lengthBuffer);
+    this.push(chunk);
+    callback();
+  }
+}
+
 module.exports = {
   Decoder,
+  Encoder,
 };
