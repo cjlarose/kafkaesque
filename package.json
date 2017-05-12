@@ -10,5 +10,9 @@
     "eslint-plugin-import": "^2.2.0",
     "mocha": "^3.3.0",
     "nodemon": "^1.11.0"
+  },
+  "dependencies": {
+    "bin-protocol": "^3.0.3",
+    "long": "^3.0.3"
   }
 }
