@@ -16,7 +16,7 @@ class Collector extends Writable {
 }
 
 describe('LengthPrefixedFrame.Decoder', () => {
-  it('should yield nothing for empty input', () => {
+  it('yields nothing for empty input', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -25,7 +25,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, []);
   });
 
-  it('should yield nothing for less than 4 bytes', () => {
+  it('yields nothing for less than 4 bytes', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -34,7 +34,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, []);
   });
 
-  it('should yield nothing for a message prefixed with 0 length', () => {
+  it('yields nothing for a message prefixed with 0 length', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -44,7 +44,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, []);
   });
 
-  it('should yield 1 byte for a prefixed message', () => {
+  it('yields 1 byte for a prefixed message', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -57,7 +57,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xFF])]);
   });
 
-  it('should throw for negative lengths', () => {
+  it('throws for negative lengths', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -70,7 +70,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     }, /Negative length not allowed/);
   });
 
-  it('should allow length and message to arrive separately', () => {
+  it('allows length and message to arrive separately', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -86,7 +86,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xFF])]);
   });
 
-  it('should allow length to be broken into two parts', () => {
+  it('allows length to be broken into two parts', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -100,7 +100,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xFF])]);
   });
 
-  it('should allow length to be broken into three parts', () => {
+  it('allows length to be broken into three parts', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -115,7 +115,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xFF])]);
   });
 
-  it('should allow length to be broken into four parts', () => {
+  it('allows length to be broken into four parts', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -131,7 +131,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xFF])]);
   });
 
-  it('should allow message to be broken up', () => {
+  it('allows message to be broken up', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -150,7 +150,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xDE, 0xAD, 0xBE, 0xEF])]);
   });
 
-  it('should allow multiple messages in the same write', () => {
+  it('allows multiple messages in the same write', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -165,7 +165,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0xBE]), Buffer.from([0xEF])]);
   });
 
-  it('should allow length to be split across messages', () => {
+  it('allows length to be split across messages', () => {
     const decoder = new LengthPrefixedFrame.Decoder();
     const collector = new Collector();
     decoder.pipe(collector);
@@ -183,7 +183,7 @@ describe('LengthPrefixedFrame.Decoder', () => {
 });
 
 describe('LengthPrefixedFrame.Encoder', () => {
-  it('should write 0-length message', () => {
+  it('writes 0-length message', () => {
     const encoder = new LengthPrefixedFrame.Encoder();
     const collector = new Collector();
     encoder.pipe(collector);
@@ -194,7 +194,7 @@ describe('LengthPrefixedFrame.Encoder', () => {
     assert.deepEqual(collector.chunks, [Buffer.from([0x00, 0x00, 0x00, 0x00])]);
   });
 
-  it('should write length and message', () => {
+  it('writes length and message', () => {
     const encoder = new LengthPrefixedFrame.Encoder();
     const collector = new Collector();
     encoder.pipe(collector);
