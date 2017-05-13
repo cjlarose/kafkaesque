@@ -1,6 +1,8 @@
 const net = require('net');
 const { API_KEY } = require('./constants');
 const LengthPrefixedFrame = require('./length_prefixed_frame');
+const { parseProduceRequest, writeProduceResponse } = require('./messages');
+const InMemoryLogStore = require('./in_memory_log_store');
 
 const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x01, // broker array length = 1
@@ -22,20 +24,43 @@ const metadataResponseBody = Buffer.from([
   0x00, 0x00, 0x00, 0x00, // isr 0
 ]);
 
+const store = new InMemoryLogStore();
+
 function handleRequest(requestBuffer) {
   const apiKey = requestBuffer.readInt16BE(0);
   const correlationId = requestBuffer.readInt32BE(4);
   console.log(`api_key: ${apiKey}`);
   console.log(`correlation_id: ${correlationId}`);
 
-  if (apiKey === API_KEY.METADATA) {
-    const response = Buffer.alloc(metadataResponseBody.length + 4);
-    response.writeInt32BE(correlationId, 0);
-    metadataResponseBody.copy(response, 4);
-    return response;
-  }
+  switch (apiKey) {
+    case API_KEY.PRODUCE: {
+      const message = parseProduceRequest(requestBuffer);
 
-  return null;
+      const topicResponses = message.topics.map((topic) => {
+        const partitionResponses = topic.partitionMessageSetPairs.map((partitionMessageSetPair) => {
+          const { partition, messageSet } = partitionMessageSetPair;
+          store.append(topic.name, partition, messageSet);
+
+          return { partition, errorCode: 0, baseOffset: 0 };
+        });
+
+        return { topic: topic.name, partitionResponses };
+      });
+
+      const responseValues = { correlationId, topicResponses, throttleTimeMs: 30000 };
+      const responseBuffer = writeProduceResponse(responseValues);
+
+      return responseBuffer;
+    }
+    case API_KEY.METADATA: {
+      const response = Buffer.alloc(metadataResponseBody.length + 4);
+      response.writeInt32BE(correlationId, 0);
+      metadataResponseBody.copy(response, 4);
+      return response;
+    }
+    default:
+      return null;
+  }
 }
 
 function handleConnection(socket) {

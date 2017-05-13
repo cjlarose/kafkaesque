@@ -28,6 +28,14 @@ KafkaProtocol.define('string', {
 
     throw new Error('Invalid string length');
   },
+  write(value) {
+    if (!value) {
+      throw new Error('Expected string');
+    }
+
+    this.Int16BE(value.length)
+      .raw(Buffer.from(value, 'utf8'));
+  },
 });
 
 KafkaProtocol.define('bytes', {
@@ -47,6 +55,7 @@ KafkaProtocol.define('bytes', {
 
 KafkaProtocol.define('message', {
   read() {
+    // TODO: Validate crc32 checksum
     this.raw('crc32', 4);
     this.Int8('magicByte');
     this.Int8('attributes');
@@ -113,6 +122,31 @@ KafkaProtocol.define('produceRequest', {
   },
 });
 
+KafkaProtocol.define('partitionResponse', {
+  write(values) {
+    this.Int32BE(values.partition)
+      .Int16BE(values.errorCode)
+      .Int64BE(values.baseOffset);
+  },
+});
+
+KafkaProtocol.define('topicResponse', {
+  write(values) {
+    this.string(values.topic)
+      .Int32BE(values.partitionResponses.length)
+      .loop(values.partitionResponses, this.partitionResponse);
+  },
+});
+
+KafkaProtocol.define('produceResponseV1', {
+  write(values) {
+    this.Int32BE(values.correlationId)
+      .Int32BE(values.topicResponses.length)
+      .loop(values.topicResponses, this.topicResponse)
+      .Int32BE(values.throttleTimeMs);
+  },
+});
+
 function parseTopic(topic) {
   const { name, partitionMessageSetPairs } = topic;
   const parseElement = (element) => {
@@ -148,6 +182,11 @@ function parseProduceRequest(buffer) {
   };
 }
 
+function writeProduceResponse(values) {
+  return new KafkaProtocol().write().produceResponseV1(values).result;
+}
+
 module.exports = {
   parseProduceRequest,
+  writeProduceResponse,
 };
