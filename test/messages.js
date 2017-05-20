@@ -1,6 +1,8 @@
 const assert = require('assert');
 const Long = require('long');
-const { parseProduceRequest, writeProduceResponse } = require('../src/messages');
+const { parseProduceRequest,
+        writeProduceResponse,
+        writeMetadataResponse } = require('../src/messages');
 
 describe('parseProduceRequest', () => {
   it('parses a produce request with multiple messages for the same partition', () => {
@@ -275,6 +277,70 @@ describe('writeProduceResponse', () => {
     ]);
 
     const actualResponse = writeProduceResponse(values);
+    assert.deepEqual(actualResponse, expectedReponse);
+  });
+});
+
+describe('writeMetadataResponse', () => {
+  it('encodes responses', () => {
+    const values = {
+      correlationId: 7,
+      brokers: [
+        {
+          nodeId: 0,
+          host: 'localhost',
+          port: 9092,
+        },
+        {
+          nodeId: 16,
+          host: 'localhost',
+          port: 9093,
+        },
+      ],
+      topicMetadata: [
+        {
+          errorCode: 0,
+          name: 'test',
+          partitionMetadata: [
+            {
+              errorCode: 0,
+              partitionId: 8,
+              leader: 0,
+              replicas: [0],
+              isrs: [0],
+            },
+            {
+              errorCode: 0,
+              partitionId: 42,
+              leader: 16,
+              replicas: [0, 16],
+              isrs: [0, 16],
+            },
+          ],
+        },
+      ],
+    };
+
+    const expectedReponse = Buffer.from([
+      0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0x6c, 0x6f,
+      0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, 0x00,
+      0x00, 0x23, 0x84, 0x00, 0x00, 0x00, 0x10, 0x00,
+      0x09, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f,
+      0x73, 0x74, 0x00, 0x00, 0x23, 0x85, 0x00, 0x00,
+      0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x74, 0x65,
+      0x73, 0x74, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x2a, 0x00, 0x00,
+      0x00, 0x10, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00,
+      0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x10,
+    ]);
+
+    const actualResponse = writeMetadataResponse(values);
     assert.deepEqual(actualResponse, expectedReponse);
   });
 });
