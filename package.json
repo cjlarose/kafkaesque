@@ -4,6 +4,9 @@
   "main": "index.js",
   "author": "Chris LaRose",
   "license": "MIT",
+  "scripts": {
+    "test": "mocha"
+  },
   "devDependencies": {
     "eslint": "^3.19.0",
     "eslint-config-airbnb-base": "^11.1.3",
