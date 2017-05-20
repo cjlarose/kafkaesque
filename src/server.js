@@ -1,28 +1,10 @@
 const net = require('net');
 const { API_KEY } = require('./constants');
 const LengthPrefixedFrame = require('./length_prefixed_frame');
-const { parseProduceRequest, writeProduceResponse } = require('./messages');
+const { parseProduceRequest,
+        writeProduceResponse,
+        writeMetadataResponse } = require('./messages');
 const InMemoryLogStore = require('./in_memory_log_store');
-
-const metadataResponseBody = Buffer.from([
-  0x00, 0x00, 0x00, 0x01, // broker array length = 1
-  0x00, 0x00, 0x00, 0x00, // node_id
-  0x00, 0x09, // broker host name length
-  0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, // localhost
-  0x00, 0x00, 0x23, 0x84, // port
-  0x00, 0x00, 0x00, 0x01, // topic metadata array length
-  0x00, 0x00, // topic error code
-  0x00, 0x04, // topic name length
-  0x74, 0x65, 0x73, 0x74, // "test"
-  0x00, 0x00, 0x00, 0x01, // partition metadata array length
-  0x00, 0x00, // partition error code
-  0x00, 0x00, 0x00, 0x00, // partition id
-  0x00, 0x00, 0x00, 0x00, // leader
-  0x00, 0x00, 0x00, 0x01, // replica length
-  0x00, 0x00, 0x00, 0x00, // replica 0
-  0x00, 0x00, 0x00, 0x01, // isr length
-  0x00, 0x00, 0x00, 0x00, // isr 0
-]);
 
 const store = new InMemoryLogStore();
 
@@ -53,10 +35,32 @@ function handleRequest(requestBuffer) {
       return responseBuffer;
     }
     case API_KEY.METADATA: {
-      const response = Buffer.alloc(metadataResponseBody.length + 4);
-      response.writeInt32BE(correlationId, 0);
-      metadataResponseBody.copy(response, 4);
-      return response;
+      const values = {
+        correlationId,
+        brokers: [
+          {
+            nodeId: 0,
+            host: 'localhost',
+            port: 9092,
+          },
+        ],
+        topicMetadata: [
+          {
+            errorCode: 0,
+            name: 'test',
+            partitionMetadata: [
+              {
+                errorCode: 0,
+                partitionId: 0,
+                leader: 0,
+                replicas: [0],
+                isrs: [0],
+              },
+            ],
+          },
+        ],
+      };
+      return writeMetadataResponse(values);
     }
     default:
       return null;
