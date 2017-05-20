@@ -1,6 +1,6 @@
 const assert = require('assert');
 const Long = require('long');
-const { parseProduceRequest } = require('../src/messages');
+const { parseProduceRequest, writeProduceResponse } = require('../src/messages');
 
 describe('parseProduceRequest', () => {
   it('parses a produce request with multiple messages for the same partition', () => {
@@ -224,5 +224,57 @@ describe('parseProduceRequest', () => {
     const actualMessage = parseProduceRequest(request);
 
     assert.deepEqual(actualMessage, expectedMessage);
+  });
+});
+
+describe('writeProduceResponse', () => {
+  it('encodes responses', () => {
+    const values = {
+      correlationId: 18,
+      topicResponses: [
+        {
+          topic: 'topic-a',
+          partitionResponses: [
+            {
+              partition: 3,
+              errorCode: 4,
+              baseOffset: 12,
+            },
+          ],
+        },
+        {
+          topic: 'topic-b',
+          partitionResponses: [
+            {
+              partition: 7,
+              errorCode: 2,
+              baseOffset: 89,
+            },
+            {
+              partition: 0,
+              errorCode: 0,
+              baseOffset: 21,
+            },
+          ],
+        },
+      ],
+      throttleTimeMs: 30000,
+    };
+
+    const expectedReponse = Buffer.from([
+      0x00, 0x00, 0x00, 0x12, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x07, 0x74, 0x6f, 0x70, 0x69, 0x63, 0x2d,
+      0x61, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x03, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x0c, 0x00, 0x07, 0x74, 0x6f, 0x70,
+      0x69, 0x63, 0x2d, 0x62, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x00, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x75, 0x30,
+    ]);
+
+    const actualResponse = writeProduceResponse(values);
+    assert.deepEqual(actualResponse, expectedReponse);
   });
 });
