@@ -51,11 +51,18 @@ function handleRequest(requestBuffer) {
         topicMetadata: [
           {
             errorCode: 0,
-            name: 'test',
+            name: 'topic-a',
             partitionMetadata: [
               {
                 errorCode: 0,
                 partitionId: 0,
+                leader: 0,
+                replicas: [0],
+                isrs: [0],
+              },
+              {
+                errorCode: 0,
+                partitionId: 1,
                 leader: 0,
                 replicas: [0],
                 isrs: [0],
