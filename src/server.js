@@ -3,6 +3,7 @@ const { API_KEY } = require('./constants');
 const LengthPrefixedFrame = require('./length_prefixed_frame');
 const { parseProduceRequest,
         writeProduceResponse,
+        parseMetadataRequest,
         writeMetadataResponse } = require('./messages');
 const InMemoryLogStore = require('./in_memory_log_store');
 
@@ -35,9 +36,12 @@ function handleRequest(requestBuffer) {
       return responseBuffer;
     }
     case API_KEY.METADATA: {
+      // TODO: Return only requested topics
+      const request = parseMetadataRequest(requestBuffer);
       const values = {
         correlationId,
         brokers: [
+          // TODO: Allow configuration of advertised brokers
           {
             nodeId: 0,
             host: 'localhost',
