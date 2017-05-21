@@ -14,10 +14,7 @@ const topicData = {
 
 const produceRequest = {
   read() {
-    this.Int16BE('apiKey')
-      .Int16BE('apiVersion')
-      .Int32BE('correlationId')
-      .nullableString('clientId')
+    this.requestHeader('header')
       .Int16BE('requiredAcks')
       .Int32BE('timeoutMs')
       .lengthPrefixedArray('topics', this.topicData);

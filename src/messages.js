@@ -16,19 +16,13 @@ function parseTopic(topic) {
 }
 
 function parseProduceRequest(buffer) {
-  const { apiKey,
-          apiVersion,
-          correlationId,
-          clientId,
+  const { header,
           requiredAcks,
           timeoutMs,
           topics } = new KafkaProtocol().read(buffer).produceRequest('value').result.value;
   const parsedTopics = topics.map(parseTopic);
   return {
-    apiKey,
-    apiVersion,
-    correlationId,
-    clientId,
+    header,
     requiredAcks,
     timeoutMs,
     topics: parsedTopics,

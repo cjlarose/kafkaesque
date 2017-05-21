@@ -13,6 +13,7 @@ KafkaProtocol.define('nullableString', common.nullableString);
 KafkaProtocol.define('string', common.string);
 KafkaProtocol.define('bytes', common.bytes);
 KafkaProtocol.define('lengthPrefixedArray', common.lengthPrefixedArray);
+KafkaProtocol.define('requestHeader', common.requestHeader);
 
 KafkaProtocol.define('messageSetElement', messageSet.messageSetElement);
 KafkaProtocol.define('messageSet', messageSet.messageSet);

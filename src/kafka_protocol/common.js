@@ -74,9 +74,19 @@ const lengthPrefixedArray = {
   },
 };
 
+const requestHeader = {
+  read() {
+    this.Int16BE('apiKey')
+      .Int16BE('apiVersion')
+      .Int32BE('correlationId')
+      .nullableString('clientId');
+  },
+};
+
 module.exports = {
   nullableString,
   string,
   bytes,
   lengthPrefixedArray,
+  requestHeader,
 };

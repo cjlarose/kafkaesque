@@ -29,10 +29,12 @@ describe('parseProduceRequest', () => {
     ]);
 
     const expectedMessage = {
-      apiKey: 0,
-      apiVersion: 1,
-      correlationId: 1,
-      clientId: 'kafkaesque-test-client',
+      header: {
+        apiKey: 0,
+        apiVersion: 1,
+        correlationId: 1,
+        clientId: 'kafkaesque-test-client',
+      },
       requiredAcks: 1,
       timeoutMs: 30000,
       topics: [
@@ -98,10 +100,12 @@ describe('parseProduceRequest', () => {
     ]);
 
     const expectedMessage = {
-      apiKey: 0,
-      apiVersion: 1,
-      correlationId: 3,
-      clientId: 'kafkaesque-test-client',
+      header: {
+        apiKey: 0,
+        apiVersion: 1,
+        correlationId: 3,
+        clientId: 'kafkaesque-test-client',
+      },
       requiredAcks: 1,
       timeoutMs: 30000,
       topics: [
@@ -174,10 +178,12 @@ describe('parseProduceRequest', () => {
     ]);
 
     const expectedMessage = {
-      apiKey: 0,
-      apiVersion: 1,
-      correlationId: 3,
-      clientId: 'kafkaesque-test-client',
+      header: {
+        apiKey: 0,
+        apiVersion: 1,
+        correlationId: 3,
+        clientId: 'kafkaesque-test-client',
+      },
       requiredAcks: 1,
       timeoutMs: 30000,
       topics: [
@@ -293,10 +299,12 @@ describe('parseMetadataRequest', () => {
     ]);
 
     const expectedMessage = {
-      apiKey: 3,
-      apiVersion: 0,
-      correlationId: 3,
-      clientId: 'kafkaesque-test-client',
+      header: {
+        apiKey: 3,
+        apiVersion: 0,
+        correlationId: 3,
+        clientId: 'kafkaesque-test-client',
+      },
       topics: [],
     };
 
@@ -316,10 +324,12 @@ describe('parseMetadataRequest', () => {
     ]);
 
     const expectedMessage = {
-      apiKey: 3,
-      apiVersion: 0,
-      correlationId: 3,
-      clientId: 'kafkaesque-test-client',
+      header: {
+        apiKey: 3,
+        apiVersion: 0,
+        correlationId: 3,
+        clientId: 'kafkaesque-test-client',
+      },
       topics: ['hello', 'world'],
     };
 
