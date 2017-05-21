@@ -11,10 +11,8 @@ const partitionMetadata = {
     this.Int16BE(values.errorCode)
       .Int32BE(values.partitionId)
       .Int32BE(values.leader)
-      .Int32BE(values.replicas.length)
-      .loop(values.replicas, this.Int32BE)
-      .Int32BE(values.isrs.length)
-      .loop(values.isrs, this.Int32BE);
+      .lengthPrefixedArray(values.replicas, this.Int32BE)
+      .lengthPrefixedArray(values.isrs, this.Int32BE);
   },
 };
 
@@ -22,18 +20,15 @@ const topicMetadata = {
   write(values) {
     this.Int16BE(values.errorCode)
       .string(values.name)
-      .Int32BE(values.partitionMetadata.length)
-      .loop(values.partitionMetadata, this.partitionMetadata);
+      .lengthPrefixedArray(values.partitionMetadata, this.partitionMetadata);
   },
 };
 
 const metadataResponseV0 = {
   write(values) {
     this.Int32BE(values.correlationId)
-      .Int32BE(values.brokers.length)
-      .loop(values.brokers, this.brokerMetadata)
-      .Int32BE(values.topicMetadata.length)
-      .loop(values.topicMetadata, this.topicMetadata);
+      .lengthPrefixedArray(values.brokers, this.brokerMetadata)
+      .lengthPrefixedArray(values.topicMetadata, this.topicMetadata);
   },
 };
 

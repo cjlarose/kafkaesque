@@ -49,8 +49,34 @@ const bytes = {
   },
 };
 
+const lengthPrefixedArray = {
+  read(parser) {
+    this.Int32BE('length');
+    const length = this.context.length;
+
+    if (length === 0) {
+      return [];
+    } else if (length >= 0) {
+      this.loop('values', parser, length);
+      return this.context.values;
+    }
+
+    throw new Error('Invalid array length');
+  },
+  write(values, writer) {
+    // TODO: handle empty array case?
+    if (!values) {
+      throw new Error('Expected array');
+    }
+
+    this.Int32BE(values.length);
+    this.loop(values, writer);
+  },
+};
+
 module.exports = {
   nullableString,
   string,
   bytes,
+  lengthPrefixedArray,
 };

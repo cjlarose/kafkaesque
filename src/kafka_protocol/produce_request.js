@@ -11,10 +11,7 @@ const partitionMessageSetPair = {
 const topicData = {
   read() {
     this.string('name');
-    this.Int32BE('partitionMessageSetPairsLength');
-    this.loop('partitionMessageSetPairs', this.partitionMessageSetPair, this.context.partitionMessageSetPairsLength);
-    const { name, partitionMessageSetPairs } = this.context;
-    return { name, partitionMessageSetPairs };
+    this.lengthPrefixedArray('partitionMessageSetPairs', this.partitionMessageSetPair);
   },
 };
 
@@ -26,11 +23,7 @@ const produceRequest = {
     this.nullableString('clientId');
     this.Int16BE('requiredAcks');
     this.Int32BE('timeoutMs');
-    this.Int32BE('topicsLength');
-    this.loop('topics', this.topicData, this.context.topicsLength);
-    const { apiKey, apiVersion, correlationId,
-      clientId, requiredAcks, timeoutMs, topics } = this.context;
-    return { apiKey, apiVersion, correlationId, clientId, requiredAcks, timeoutMs, topics };
+    this.lengthPrefixedArray('topics', this.topicData);
   },
 };
 
