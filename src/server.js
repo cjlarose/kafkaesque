@@ -11,13 +11,12 @@ const store = new InMemoryLogStore();
 
 function handleRequest(requestBuffer) {
   const apiKey = requestBuffer.readInt16BE(0);
-  const correlationId = requestBuffer.readInt32BE(4);
   console.log(`api_key: ${apiKey}`);
-  console.log(`correlation_id: ${correlationId}`);
 
   switch (apiKey) {
     case API_KEY.PRODUCE: {
       const message = parseProduceRequest(requestBuffer);
+      const correlationId = message.header.correlationId;
 
       const topicResponses = message.topics.map((topic) => {
         const partitionResponses = topic.partitionMessageSetPairs.map((partitionMessageSetPair) => {
@@ -38,6 +37,7 @@ function handleRequest(requestBuffer) {
     case API_KEY.METADATA: {
       // TODO: Return only requested topics
       const request = parseMetadataRequest(requestBuffer);
+      const correlationId = request.header.correlationId;
       const values = {
         correlationId,
         brokers: [
