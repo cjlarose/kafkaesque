@@ -2,6 +2,7 @@ const assert = require('assert');
 const Long = require('long');
 const { parseProduceRequest,
         writeProduceResponse,
+        parseMetadataRequest,
         writeMetadataResponse } = require('../src/messages');
 
 describe('parseProduceRequest', () => {
@@ -278,6 +279,52 @@ describe('writeProduceResponse', () => {
 
     const actualResponse = writeProduceResponse(values);
     assert.deepEqual(actualResponse, expectedReponse);
+  });
+});
+
+describe('parseMetadataRequest', () => {
+  it('parses requests with unspecified topics', () => {
+    const request = Buffer.from([
+      0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
+      0x00, 0x16, 0x6b, 0x61, 0x66, 0x6b, 0x61, 0x65,
+      0x73, 0x71, 0x75, 0x65, 0x2d, 0x74, 0x65, 0x73,
+      0x74, 0x2d, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74,
+      0x00, 0x00, 0x00, 0x00,
+    ]);
+
+    const expectedMessage = {
+      apiKey: 3,
+      apiVersion: 0,
+      correlationId: 3,
+      clientId: 'kafkaesque-test-client',
+      topics: [],
+    };
+
+    const actualMessage = parseMetadataRequest(request);
+    assert.deepEqual(actualMessage, expectedMessage);
+  });
+
+  it('parses requests with specified topics', () => {
+    const request = Buffer.from([
+      0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03,
+      0x00, 0x16, 0x6b, 0x61, 0x66, 0x6b, 0x61, 0x65,
+      0x73, 0x71, 0x75, 0x65, 0x2d, 0x74, 0x65, 0x73,
+      0x74, 0x2d, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74,
+      0x00, 0x00, 0x00, 0x02, 0x00, 0x05, 0x68, 0x65,
+      0x6c, 0x6c, 0x6f, 0x00, 0x05, 0x77, 0x6f, 0x72,
+      0x6c, 0x64,
+    ]);
+
+    const expectedMessage = {
+      apiKey: 3,
+      apiVersion: 0,
+      correlationId: 3,
+      clientId: 'kafkaesque-test-client',
+      topics: ['hello', 'world'],
+    };
+
+    const actualMessage = parseMetadataRequest(request);
+    assert.deepEqual(actualMessage, expectedMessage);
   });
 });
 

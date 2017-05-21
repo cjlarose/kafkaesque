@@ -39,6 +39,10 @@ function writeProduceResponse(values) {
   return new KafkaProtocol().write().produceResponseV1(values).result;
 }
 
+function parseMetadataRequest(buffer) {
+  return new KafkaProtocol().read(buffer).metadataRequest().result;
+}
+
 function writeMetadataResponse(values) {
   return new KafkaProtocol().write().metadataResponseV0(values).result;
 }
@@ -46,5 +50,6 @@ function writeMetadataResponse(values) {
 module.exports = {
   parseProduceRequest,
   writeProduceResponse,
+  parseMetadataRequest,
   writeMetadataResponse,
 };
