@@ -15,10 +15,10 @@ function handleRequest(requestBuffer) {
 
   switch (apiKey) {
     case API_KEY.PRODUCE: {
-      const message = parseProduceRequest(requestBuffer);
-      const correlationId = message.header.correlationId;
+      const request = parseProduceRequest(requestBuffer);
+      const correlationId = request.header.correlationId;
 
-      const topicResponses = message.topics.map((topic) => {
+      const topicResponses = request.topics.map((topic) => {
         const partitionResponses = topic.partitionMessageSetPairs.map((partitionMessageSetPair) => {
           const { partition, messageSet } = partitionMessageSetPair;
           store.append(topic.name, partition, messageSet);
