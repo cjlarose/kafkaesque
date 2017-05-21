@@ -1,29 +1,26 @@
 const partitionMessageSetPair = {
   read() {
-    this.Int32BE('partition');
-    this.Int32BE('messageSetSize');
-    this.raw('messageSet', this.context.messageSetSize);
-    const { partition, messageSet } = this.context;
-    return { partition, messageSet };
+    this.Int32BE('partition')
+      .bytes('messageSet');
   },
 };
 
 const topicData = {
   read() {
-    this.string('name');
-    this.lengthPrefixedArray('partitionMessageSetPairs', this.partitionMessageSetPair);
+    this.string('name')
+      .lengthPrefixedArray('partitionMessageSetPairs', this.partitionMessageSetPair);
   },
 };
 
 const produceRequest = {
   read() {
-    this.Int16BE('apiKey');
-    this.Int16BE('apiVersion');
-    this.Int32BE('correlationId');
-    this.nullableString('clientId');
-    this.Int16BE('requiredAcks');
-    this.Int32BE('timeoutMs');
-    this.lengthPrefixedArray('topics', this.topicData);
+    this.Int16BE('apiKey')
+      .Int16BE('apiVersion')
+      .Int32BE('correlationId')
+      .nullableString('clientId')
+      .Int16BE('requiredAcks')
+      .Int32BE('timeoutMs')
+      .lengthPrefixedArray('topics', this.topicData);
   },
 };
 
