@@ -5,6 +5,7 @@ const LENGTH_PREFIX_SIZE = 4;
 class BufferList {
   constructor() {
     // TODO: Replace buffers Array with Deque for O(1) shift and push
+    // TODO: Prevent buffer copies by passing around buffer lists that simulate contiguous buffers
     this.buffers = [];
     this.length = 0;
   }
