@@ -2,6 +2,7 @@ const assert = require('assert');
 const Long = require('long');
 const { parseProduceRequest,
         writeProduceResponse,
+        parseFetchRequest,
         parseMetadataRequest,
         writeMetadataResponse } = require('../src/messages');
 
@@ -399,5 +400,50 @@ describe('writeMetadataResponse', () => {
 
     const actualResponse = writeMetadataResponse(values);
     assert.deepEqual(actualResponse, expectedReponse);
+  });
+});
+
+
+describe('parseFetchRequest', () => {
+  it('parses requests', () => {
+    const request = Buffer.from([
+      0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+      0x00, 0x16, 0x6b, 0x61, 0x66, 0x6b, 0x61, 0x65,
+      0x73, 0x71, 0x75, 0x65, 0x2d, 0x74, 0x65, 0x73,
+      0x74, 0x2d, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74,
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x64,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x07, 0x74, 0x6f, 0x70, 0x69, 0x63, 0x2d,
+      0x61, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x0f, 0x00, 0x10, 0x00, 0x00,
+    ]);
+
+    const expectedMessage = {
+      header: {
+        apiKey: 1,
+        apiVersion: 0,
+        correlationId: 4,
+        clientId: 'kafkaesque-test-client',
+      },
+      replicaId: -1,
+      maxWaitTimeMs: 100,
+      minBytes: 1,
+      topics: [
+        {
+          name: 'topic-a',
+          partitions: [
+            {
+              partitionId: 0,
+              offset: Long.fromInt(15),
+              maxBytes: 1048576,
+            },
+          ],
+        },
+      ],
+    };
+
+    const actualMessage = parseFetchRequest(request);
+    assert.deepEqual(actualMessage, expectedMessage);
   });
 });

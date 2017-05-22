@@ -4,6 +4,7 @@ const messageSet = require('./message_set');
 const message = require('./message');
 const produceRequest = require('./produce_request');
 const produceResponse = require('./produce_response');
+const fetchRequest = require('./fetch_request');
 const metadataRequest = require('./metadata_request');
 const metadataResponse = require('./metadata_response');
 
@@ -27,6 +28,10 @@ KafkaProtocol.define('produceRequest', produceRequest.produceRequest);
 KafkaProtocol.define('partitionResponse', produceResponse.partitionResponse);
 KafkaProtocol.define('topicResponse', produceResponse.topicResponse);
 KafkaProtocol.define('produceResponseV1', produceResponse.produceResponseV1);
+
+KafkaProtocol.define('fetchRequestPartition', fetchRequest.fetchRequestPartition);
+KafkaProtocol.define('fetchRequestTopic', fetchRequest.fetchRequestTopic);
+KafkaProtocol.define('fetchRequest', fetchRequest.fetchRequest);
 
 KafkaProtocol.define('metadataRequest', metadataRequest.metadataRequest);
 
