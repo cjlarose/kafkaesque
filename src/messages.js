@@ -37,6 +37,10 @@ function parseFetchRequest(buffer) {
   return new KafkaProtocol().read(buffer).fetchRequest().result;
 }
 
+function writeFetchResponse(values) {
+  return new KafkaProtocol().write().fetchResponseV0(values).result;
+}
+
 function parseMetadataRequest(buffer) {
   return new KafkaProtocol().read(buffer).metadataRequest().result;
 }
@@ -49,6 +53,7 @@ module.exports = {
   parseProduceRequest,
   writeProduceResponse,
   parseFetchRequest,
+  writeFetchResponse,
   parseMetadataRequest,
   writeMetadataResponse,
 };

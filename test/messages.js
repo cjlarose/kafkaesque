@@ -3,6 +3,7 @@ const Long = require('long');
 const { parseProduceRequest,
         writeProduceResponse,
         parseFetchRequest,
+        writeFetchResponse,
         parseMetadataRequest,
         writeMetadataResponse } = require('../src/messages');
 
@@ -445,5 +446,38 @@ describe('parseFetchRequest', () => {
 
     const actualMessage = parseFetchRequest(request);
     assert.deepEqual(actualMessage, expectedMessage);
+  });
+});
+
+describe('writeFetchResponse', () => {
+  it('encodes responses', () => {
+    const values = {
+      correlationId: 7,
+      topics: [
+        {
+          name: 'topic-a',
+          partitions: [
+            {
+              partitionId: 8,
+              errorCode: 0,
+              highwaterMarkOffset: Long.fromInt(9001),
+              messageSet: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+            },
+          ],
+        },
+      ],
+    };
+
+    const expectedReponse = Buffer.from([
+      0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x07, 0x74, 0x6f, 0x70, 0x69, 0x63, 0x2d,
+      0x61, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x23, 0x29, 0x00, 0x00, 0x00, 0x04, 0xde,
+      0xad, 0xbe, 0xef,
+    ]);
+
+    const actualResponse = writeFetchResponse(values);
+    assert.deepEqual(actualResponse, expectedReponse);
   });
 });

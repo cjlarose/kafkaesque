@@ -47,6 +47,10 @@ const bytes = {
 
     throw new Error('Invalid bytes length');
   },
+  write(buffer) {
+    this.Int32BE(buffer.length)
+     .raw(buffer);
+  },
 };
 
 const lengthPrefixedArray = {
