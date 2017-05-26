@@ -21,7 +21,9 @@ function handleRequest(requestBuffer) {
       const topicResponses = request.topics.map((topic) => {
         const partitionResponses = topic.partitionMessageSetPairs.map((partitionMessageSetPair) => {
           const { partition, messageSet } = partitionMessageSetPair;
-          store.append(topic.name, partition, messageSet);
+          messageSet.forEach((message) => {
+            store.append(topic.name, partition, message, 1);
+          });
 
           return { partition, errorCode: 0, baseOffset: 0 };
         });
