@@ -3,8 +3,11 @@ const { API_KEY } = require('./constants');
 const LengthPrefixedFrame = require('./length_prefixed_frame');
 const { parseProduceRequest,
         writeProduceResponse,
+        parseFetchRequest,
+        writeFetchResponse,
         parseMetadataRequest,
-        writeMetadataResponse } = require('./messages');
+        writeMetadataResponse,
+        writeMessageSetElement } = require('./messages');
 const InMemoryLogStore = require('./in_memory_log_store');
 
 const store = new InMemoryLogStore();
@@ -22,7 +25,8 @@ function handleRequest(requestBuffer) {
         const partitionResponses = topic.partitionMessageSetPairs.map((partitionMessageSetPair) => {
           const { partition, messageSet } = partitionMessageSetPair;
           messageSet.forEach((message) => {
-            store.append(topic.name, partition, message, 1);
+            const encodedMessage = writeMessageSetElement(message);
+            store.append(topic.name, partition, encodedMessage, 1);
           });
 
           return { partition, errorCode: 0, baseOffset: 0 };
@@ -31,8 +35,43 @@ function handleRequest(requestBuffer) {
         return { topic: topic.name, partitionResponses };
       });
 
+      console.log(JSON.stringify(store.logs, null, 4));
+
       const responseValues = { correlationId, topicResponses, throttleTimeMs: 30000 };
       const responseBuffer = writeProduceResponse(responseValues);
+
+      return responseBuffer;
+    }
+    case API_KEY.FETCH: {
+      // TODO: respect maxWaitTimeMs
+      // TODO: respect minBytes
+      // TODO: respect maxBytes
+
+      const request = parseFetchRequest(requestBuffer);
+      const correlationId = request.header.correlationId;
+      console.log(JSON.stringify(request, null, 4));
+
+      const topicResponses = request.topics.map((topic) => {
+        const partitionResponses = topic.partitions.map(({ partitionId, offset }) => {
+          console.log(topic.name, partitionId, offset);
+          // TODO: Respond with error if topic/partition does not exist
+          const message = store.fetch(topic.name, partitionId, offset);
+          const highwaterMarkOffset = store.logEndOffset(topic.name, partitionId);
+          const errorCode = message === null ? 1 : 0;
+          return {
+            partitionId,
+            highwaterMarkOffset,
+            messageSet: [message],
+            errorCode,
+          };
+        });
+
+        return { name: topic.name, partitions: partitionResponses };
+      });
+
+      console.log(JSON.stringify(topicResponses, null, 4));
+      const responseValues = { correlationId, topics: topicResponses };
+      const responseBuffer = writeFetchResponse(responseValues);
 
       return responseBuffer;
     }
