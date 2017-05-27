@@ -5,6 +5,10 @@ const messageSetElement = {
     this.raw('message', this.context.messageSize);
     return { offset: this.context.offset, message: this.context.message };
   },
+  write({ offset, messageBuffer }) {
+    this.Int64BE(offset);
+    this.bytes(messageBuffer);
+  },
 };
 
 const messageSet = {

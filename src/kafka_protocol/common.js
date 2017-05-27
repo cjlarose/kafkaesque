@@ -48,8 +48,12 @@ const bytes = {
     throw new Error('Invalid bytes length');
   },
   write(buffer) {
-    this.Int32BE(buffer.length)
-     .raw(buffer);
+    if (buffer === null) {
+      this.Int32BE(-1);
+    } else {
+      this.Int32BE(buffer.length)
+       .raw(buffer);
+    }
   },
 };
 

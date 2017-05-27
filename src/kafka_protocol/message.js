@@ -8,6 +8,13 @@ const message = {
     this.bytes('value');
     return this.context;
   },
+  write({ crc32, magicByte, attributes, key, value }) {
+    this.raw(crc32)
+      .Int8(magicByte)
+      .Int8(attributes)
+      .bytes(key)
+      .bytes(value);
+  },
 };
 
 module.exports = {

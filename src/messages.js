@@ -49,6 +49,11 @@ function writeMetadataResponse(values) {
   return new KafkaProtocol().write().metadataResponseV0(values).result;
 }
 
+function writeMessageSetElement({ offset, message }) {
+  const messageBuffer = new KafkaProtocol().write().message(message).result;
+  return new KafkaProtocol().write().messageSetElement({ offset, messageBuffer }).result;
+}
+
 module.exports = {
   parseProduceRequest,
   writeProduceResponse,
@@ -56,4 +61,5 @@ module.exports = {
   writeFetchResponse,
   parseMetadataRequest,
   writeMetadataResponse,
+  writeMessageSetElement,
 };
