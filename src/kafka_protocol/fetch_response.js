@@ -3,7 +3,7 @@ const fetchResponsePartitions = {
     this.Int32BE(partitionId)
       .Int16BE(errorCode)
       .Int64BE(highwaterMarkOffset)
-      .bytes(messageSet);
+      .messageSet(messageSet);
   },
 };
 

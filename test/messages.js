@@ -461,7 +461,7 @@ describe('writeFetchResponse', () => {
               partitionId: 8,
               errorCode: 0,
               highwaterMarkOffset: Long.fromInt(9001),
-              messageSet: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+              messageSet: [Buffer.from([0xde, 0xad, 0xbe, 0xef])],
             },
           ],
         },
