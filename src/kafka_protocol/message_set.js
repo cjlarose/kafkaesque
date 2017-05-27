@@ -21,6 +21,17 @@ const messageSet = {
     });
     return this.context.value;
   },
+  write(messages) {
+    let messageSetSize = 0;
+    messages.forEach((message) => {
+      messageSetSize += message.length;
+    });
+
+    this.Int32BE(messageSetSize);
+    messages.forEach((message) => {
+      this.raw(message);
+    });
+  },
 };
 
 module.exports = {
