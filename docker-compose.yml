@@ -1,8 +1,0 @@
-version: '3'
-services:
-  kafkaesque:
-    build: .
-    ports:
-    - "9092:9092"
-    volumes:
-    - .:/usr/src/app
