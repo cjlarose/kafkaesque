@@ -1,10 +1,7 @@
 module Main where
 
-import Network.Socket (close, socket, setSocketOption, bind, listen, Socket,
-                       SockAddr, accept, Family(AF_INET), SocketType(Stream),
-                       SocketOption(ReuseAddr), SockAddr(SockAddrInet),
-                       iNADDR_ANY)
-import Network.Socket.ByteString (send)
+import Network.Socket hiding (send, recv)
+import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
 
 runConn :: (Socket, SockAddr) -> IO ()
