@@ -5,12 +5,16 @@ import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut)
 import System.IO (IOMode(ReadWriteMode), hClose)
+import Data.Binary.Strict.Get (runGet, getWord32be)
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
     handle <- socketToHandle sock ReadWriteMode
     len <- hGet handle 4
-    hPut handle len
+    let (res, _) = runGet getWord32be len
+    case res of
+      Left err -> return ()
+      Right lenAsWord -> hPut handle . fromString . show $ lenAsWord
     hClose handle
 
 mainLoop :: Socket -> IO ()

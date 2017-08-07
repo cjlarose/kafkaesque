@@ -28,6 +28,7 @@ executable kafkaesque-exe
                      , network
                      , utf8-string
                      , bytestring
+                     , binary-strict
   default-language:    Haskell2010
 
 test-suite kafkaesque-test
