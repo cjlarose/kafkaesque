@@ -6,6 +6,7 @@ import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
+import Data.Int (Int32)
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
@@ -14,7 +15,7 @@ runConn (sock, _) = do
     let (res, _) = runGet getWord32be len
     case res of
       Left err -> return ()
-      Right lenAsWord -> hPut handle . fromString . show $ lenAsWord
+      Right lenAsWord -> hPut handle . fromString . show $ (fromIntegral lenAsWord :: Int32)
     hClose handle
 
 mainLoop :: Socket -> IO ()
