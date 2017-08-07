@@ -3,11 +3,15 @@ module Main where
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
+import Data.ByteString (hGet, hPut)
+import System.IO (IOMode(ReadWriteMode), hClose)
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
-    send sock (fromString "Hello!\n")
-    close sock
+    handle <- socketToHandle sock ReadWriteMode
+    len <- hGet handle 4
+    hPut handle len
+    hClose handle
 
 mainLoop :: Socket -> IO ()
 mainLoop sock = do
