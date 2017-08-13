@@ -1,6 +1,5 @@
 module KafkaMessage (KafkaRequest(..), kafkaRequest) where
 
-import Data.Maybe (catMaybes)
 import Data.Int (Int16, Int32)
 import Data.ByteString.UTF8 (toString)
 import Data.Attoparsec.ByteString (Parser, take, count)
@@ -12,14 +11,23 @@ signedInt16be = fromIntegral <$> anyWord16be
 signedInt32be :: Parser Int32
 signedInt32be = fromIntegral <$> anyWord32be
 
-kafkaString :: Parser (Maybe String)
-kafkaString = do
+kafkaNullableString :: Parser (Maybe String)
+kafkaNullableString = do
   len <- signedInt16be
   if len < 0 then
     return Nothing
   else do
     str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
     return . Just . toString $ str
+
+kafkaString :: Parser String
+kafkaString = do
+  len <- signedInt16be
+  if len < 0 then
+    fail "Expected non-null string"
+  else do
+    str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
+    return . toString $ str
 
 kafkaArray :: Parser a -> Parser (Maybe [a])
 kafkaArray p = do
@@ -33,12 +41,12 @@ kafkaArray p = do
 data KafkaRequest = TopicMetadataRequest (Maybe [String])
 
 metadataRequest :: Parser KafkaRequest
-metadataRequest = (TopicMetadataRequest . (<$>) catMaybes) <$> kafkaArray kafkaString
+metadataRequest = TopicMetadataRequest <$> kafkaArray kafkaString
 
 requestMessageHeader :: Parser (Int16, Int16, Int32, Maybe String)
 requestMessageHeader =
   (\apiKey apiVersion correlationId clientId -> (apiKey, apiVersion, correlationId, clientId))
-    <$> signedInt16be <*> signedInt16be <*> signedInt32be <*> kafkaString
+    <$> signedInt16be <*> signedInt16be <*> signedInt32be <*> kafkaNullableString
 
 kafkaRequest :: Parser (Either String KafkaRequest)
 kafkaRequest = do
