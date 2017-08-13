@@ -35,12 +35,10 @@ handleRequest request =
         Left err -> fromString err
         Right ((_, _, correlationId, _), validReq) ->
           let
-            response = writeResponse . respondToRequest $ validReq
-            putResponseLength = putWord32be . fromIntegral . (4 +) . Data.ByteString.length $ response
             putCorrelationId = putWord32be . fromIntegral $ correlationId
-            putResponse = putByteString response
+            putResponse = putByteString . writeResponse . respondToRequest $ validReq
           in
-            runPut (putResponseLength *> putCorrelationId *> putResponse)
+            runPut $ putCorrelationId *> putResponse
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
@@ -54,6 +52,7 @@ runConn (sock, _) = do
           let msgLen = fromIntegral lenAsWord :: Int32
           msg <- hGet handle . fromIntegral $ msgLen
           let response = handleRequest msg
+          hPut handle . runPut . putWord32be . fromIntegral . Data.ByteString.length $ response
           hPut handle response
 
 mainLoop :: Socket -> IO ()
