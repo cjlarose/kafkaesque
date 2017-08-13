@@ -16,7 +16,7 @@ respondToRequest (TopicMetadataRequest topics) = fromString . maybe "no topics" 
 
 handleRequest :: ByteString -> ByteString
 handleRequest request =
-  case (parseOnly (kafkaRequest <* endOfInput) request) of
+  case parseOnly (kafkaRequest <* endOfInput) request of
     Left err -> fromString "Oops"
     Right req ->
       case req of
@@ -35,7 +35,7 @@ runConn (sock, _) = do
           let msgLen = fromIntegral lenAsWord :: Int32
           msg <- hGet handle . fromIntegral $ msgLen
           let response = handleRequest msg
-          hPut handle $ response
+          hPut handle response
 
 mainLoop :: Socket -> IO ()
 mainLoop sock = do

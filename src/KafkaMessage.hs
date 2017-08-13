@@ -15,7 +15,7 @@ signedInt32be = fromIntegral <$> anyWord32be
 kafkaString :: Parser (Maybe String)
 kafkaString = do
   len <- signedInt16be
-  if (len < 0) then do
+  if len < 0 then
     return Nothing
   else do
     str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
@@ -24,7 +24,7 @@ kafkaString = do
 kafkaArray :: Parser a -> Parser (Maybe [a])
 kafkaArray p = do
   len <- signedInt32be
-  if (len < 0) then do
+  if len < 0 then
     return Nothing
   else do
     xs <- count (fromIntegral len) p
@@ -47,5 +47,4 @@ kafkaRequest = do
     3 -> do
       request <- metadataRequest
       return . Right $ request
-    _ -> do
-      return . Left $ "Unknown request type"
+    _ -> return . Left $ "Unknown request type"
