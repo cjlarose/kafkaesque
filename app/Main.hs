@@ -8,6 +8,7 @@ import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
 import Data.Int (Int32)
 import Control.Monad (forever)
+import KafkaMessage (kafkaString)
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
