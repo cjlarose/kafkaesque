@@ -1,4 +1,4 @@
-module KafkaMessage (KafkaRequest(..), Broker(..), KafkaError(..), PartitionMetadata(..), TopicMetadata(..), KafkaResponse(..), writeResponse, kafkaRequest) where
+module Kafkaesque.Message (KafkaRequest(..), Broker(..), KafkaError(..), PartitionMetadata(..), TopicMetadata(..), KafkaResponse(..), writeResponse, kafkaRequest) where
 
 import Data.Int (Int16, Int32)
 import Data.ByteString (ByteString)

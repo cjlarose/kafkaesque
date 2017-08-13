@@ -10,7 +10,7 @@ import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
 import Control.Monad (forever)
-import KafkaMessage (KafkaRequest(..), Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), kafkaRequest, writeResponse)
+import Kafkaesque.Message (KafkaRequest(..), Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), kafkaRequest, writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 
