@@ -18,12 +18,8 @@ respondToRequest :: KafkaRequest -> KafkaResponse
 respondToRequest (TopicMetadataRequest ts) =
   let
     topics = fromMaybe [] ts
-    brokers = [Broker 42 "localhost" 9292]
-    topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ]
-                    , TopicMetadata NoError "topic-b" [ PartitionMetadata NoError 0 42 [42] [42]
-                                                      , PartitionMetadata NoError 1 42 [42] [42]
-                                                      , PartitionMetadata NoError 2 42 [42] [42]
-                                                      , PartitionMetadata NoError 3 42 [42] [42] ] ]
+    brokers = [Broker 42 "localhost" 9092]
+    topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ] ]
   in
     TopicMetadataResponseV0 brokers topicMetadata
 
