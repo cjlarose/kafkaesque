@@ -15,7 +15,7 @@ kafkaString :: Parser (Maybe String)
 kafkaString = do
   len <- signedInt16be
   if (len < 0) then do
+    return Nothing
+  else do
     str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
     return . Just . toString $ str
-  else
-    return Nothing
