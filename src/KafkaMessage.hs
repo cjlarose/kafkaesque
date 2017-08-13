@@ -74,8 +74,8 @@ kafkaErrorCode :: KafkaError -> Int
 kafkaErrorCode NoError = 0
 kafkaErrorCode UnknownTopicOrPartition = 3
 
-writeResponse :: KafkaResponse -> ByteString
-writeResponse (TopicMetadataResponseV0 brokers topicMetadata) =
+putTopicMetadataResponse :: KafkaResponse -> Put
+putTopicMetadataResponse (TopicMetadataResponseV0 brokers topicMetadata) =
   let
     putInt32be = putWord32be . fromIntegral
     putKakfaError = putWord16be . fromIntegral . kafkaErrorCode
@@ -94,4 +94,7 @@ writeResponse (TopicMetadataResponseV0 brokers topicMetadata) =
       putKafkaString name *>
       putKafkaArray putPartitionMetadata partitionMetadata
   in
-    runPut $ putKafkaArray putBroker brokers *> putKafkaArray putTopicMetadata topicMetadata
+    putKafkaArray putBroker brokers *> putKafkaArray putTopicMetadata topicMetadata
+
+writeResponse :: KafkaResponse -> ByteString
+writeResponse req@(TopicMetadataResponseV0 _ _) = runPut . putTopicMetadataResponse $ req
