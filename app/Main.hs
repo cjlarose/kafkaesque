@@ -39,29 +39,29 @@ handleRequest request =
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
-    handle <- socketToHandle sock ReadWriteMode
-    forever $ do
-      len <- hGet handle 4
-      let (res, _) = runGet getWord32be len
-      case res of
-        Left err -> return ()
-        Right lenAsWord -> do
-          let msgLen = fromIntegral lenAsWord :: Int32
-          msg <- hGet handle . fromIntegral $ msgLen
-          let response = handleRequest msg
-          hPut handle . runPut . putWord32be . fromIntegral . Data.ByteString.length $ response
-          hPut handle response
+  handle <- socketToHandle sock ReadWriteMode
+  forever $ do
+    len <- hGet handle 4
+    let (res, _) = runGet getWord32be len
+    case res of
+      Left err -> return ()
+      Right lenAsWord -> do
+        let msgLen = fromIntegral lenAsWord :: Int32
+        msg <- hGet handle . fromIntegral $ msgLen
+        let response = handleRequest msg
+        hPut handle . runPut . putWord32be . fromIntegral . Data.ByteString.length $ response
+        hPut handle response
 
 mainLoop :: Socket -> IO ()
 mainLoop sock = do
-    conn <- accept sock
-    forkIO (runConn conn)
-    mainLoop sock
+  conn <- accept sock
+  forkIO (runConn conn)
+  mainLoop sock
 
 main :: IO ()
 main = do
-    sock <- socket AF_INET Stream 0
-    setSocketOption sock ReuseAddr 1
-    bind sock (SockAddrInet 9092 iNADDR_ANY)
-    listen sock 2
-    mainLoop sock
+  sock <- socket AF_INET Stream 0
+  setSocketOption sock ReuseAddr 1
+  bind sock (SockAddrInet 9092 iNADDR_ANY)
+  listen sock 2
+  mainLoop sock
