@@ -1,14 +1,22 @@
 module Main where
 
+import Data.Int (Int16, Int32)
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
-import Data.ByteString (hGet, hPut)
+import Data.ByteString (hGet, hPut, ByteString)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
 import Data.Int (Int32)
 import Control.Monad (forever)
-import KafkaMessage (kafkaString)
+import KafkaMessage (requestMessageHeader)
+import Data.Attoparsec.ByteString (parseOnly, endOfInput)
+
+handleRequest :: ByteString -> ByteString
+handleRequest request =
+  case (parseOnly (requestMessageHeader <* endOfInput) request) of
+    Left err -> fromString "Oops"
+    Right (apiKey, apiVersion, correlationId, clientId) -> fromString "success"
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
@@ -20,9 +28,9 @@ runConn (sock, _) = do
         Left err -> return ()
         Right lenAsWord -> do
           let msgLen = fromIntegral lenAsWord :: Int32
-          hPut handle . fromString . show $ msgLen
           msg <- hGet handle . fromIntegral $ msgLen
-          hPut handle . fromString . show $ msg
+          let response = handleRequest msg
+          hPut handle $ response
 
 mainLoop :: Socket -> IO ()
 mainLoop sock = do

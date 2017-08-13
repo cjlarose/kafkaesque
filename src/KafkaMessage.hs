@@ -1,4 +1,4 @@
-module KafkaMessage(kafkaString) where
+module KafkaMessage (requestMessageHeader) where
 
 import Data.Int (Int16, Int32)
 import Data.ByteString.UTF8 (toString)
@@ -19,3 +19,8 @@ kafkaString = do
   else do
     str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
     return . Just . toString $ str
+
+requestMessageHeader :: Parser (Int16, Int16, Int32, Maybe String)
+requestMessageHeader =
+  (\apiKey apiVersion correlationId clientId -> (apiKey, apiVersion, correlationId, clientId))
+    <$> signedInt16be <*> signedInt16be <*> signedInt32be <*> kafkaString
