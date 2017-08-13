@@ -2,6 +2,7 @@ module Main where
 
 import Data.Int (Int32)
 import Data.Maybe (fromMaybe)
+import Control.Concurrent (forkIO)
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
@@ -58,7 +59,7 @@ runConn (sock, _) = do
 mainLoop :: Socket -> IO ()
 mainLoop sock = do
     conn <- accept sock
-    runConn conn
+    forkIO (runConn conn)
     mainLoop sock
 
 main :: IO ()
