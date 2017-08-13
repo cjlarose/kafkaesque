@@ -19,6 +19,8 @@ library
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , attoparsec-binary
+                     , bytestring
+                     , cereal
                      , utf8-string
   default-language:    Haskell2010
 
@@ -32,6 +34,7 @@ executable kafkaesque-exe
                      , utf8-string
                      , bytestring
                      , binary-strict
+                     , cereal
                      , attoparsec
   default-language:    Haskell2010
 

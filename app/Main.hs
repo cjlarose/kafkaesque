@@ -1,18 +1,30 @@
 module Main where
 
 import Data.Int (Int32)
+import Data.Maybe (fromMaybe)
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
-import Data.ByteString (hGet, hPut, ByteString)
+import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
 import Control.Monad (forever)
-import KafkaMessage (KafkaRequest(..), kafkaRequest)
+import KafkaMessage (KafkaRequest(..), Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), kafkaRequest, writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
+import Data.Serialize.Put (runPut, putWord32be, putByteString)
 
-respondToRequest :: KafkaRequest -> ByteString
-respondToRequest (TopicMetadataRequest topics) = fromString . maybe "no topics" show $ topics
+respondToRequest :: KafkaRequest -> KafkaResponse
+respondToRequest (TopicMetadataRequest ts) =
+  let
+    topics = fromMaybe [] ts
+    brokers = [Broker 42 "localhost" 9292]
+    topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ]
+                    , TopicMetadata NoError "topic-b" [ PartitionMetadata NoError 0 42 [42] [42]
+                                                      , PartitionMetadata NoError 1 42 [42] [42]
+                                                      , PartitionMetadata NoError 2 42 [42] [42]
+                                                      , PartitionMetadata NoError 3 42 [42] [42] ] ]
+  in
+    TopicMetadataResponseV0 brokers topicMetadata
 
 handleRequest :: ByteString -> ByteString
 handleRequest request =
@@ -21,7 +33,14 @@ handleRequest request =
     Right req ->
       case req of
         Left err -> fromString err
-        Right validReq -> respondToRequest validReq
+        Right ((_, _, correlationId, _), validReq) ->
+          let
+            response = writeResponse . respondToRequest $ validReq
+            putResponseLength = putWord32be . fromIntegral . (4 +) . Data.ByteString.length $ response
+            putCorrelationId = putWord32be . fromIntegral $ correlationId
+            putResponse = putByteString response
+          in
+            runPut (putResponseLength *> putCorrelationId *> putResponse)
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
