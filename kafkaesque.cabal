@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Kafkaesque.Message
+  exposed-modules:     Kafkaesque.Request
+                     , Kafkaesque.Response
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , attoparsec-binary
