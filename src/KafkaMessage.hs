@@ -16,27 +16,24 @@ kafkaNullableString = do
   len <- signedInt16be
   if len < 0 then
     return Nothing
-  else do
-    str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
-    return . Just . toString $ str
+  else
+    Just . toString <$> Data.Attoparsec.ByteString.take (fromIntegral len)
 
 kafkaString :: Parser String
 kafkaString = do
   len <- signedInt16be
   if len < 0 then
     fail "Expected non-null string"
-  else do
-    str <- Data.Attoparsec.ByteString.take . fromIntegral $ len
-    return . toString $ str
+  else
+    toString <$> Data.Attoparsec.ByteString.take (fromIntegral len)
 
 kafkaArray :: Parser a -> Parser (Maybe [a])
 kafkaArray p = do
   len <- signedInt32be
   if len < 0 then
     return Nothing
-  else do
-    xs <- count (fromIntegral len) p
-    return . Just $ xs
+  else
+    Just <$> count (fromIntegral len) p
 
 data KafkaRequest = TopicMetadataRequest (Maybe [String])
 
