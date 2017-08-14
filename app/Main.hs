@@ -18,7 +18,6 @@ import Data.Serialize.Put (runPut, putWord32be, putByteString)
 respondToRequest :: KafkaRequest -> KafkaResponse
 respondToRequest (TopicMetadataRequest (ApiVersion 0) ts) =
   let
-    topics = fromMaybe [] ts
     brokers = [Broker 42 "localhost" 9092]
     topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ] ]
   in
