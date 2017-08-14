@@ -47,11 +47,11 @@ requestMessageHeader =
   (\apiKey apiVersion correlationId clientId -> (apiKey, ApiVersion . fromIntegral $ apiVersion, correlationId, clientId))
     <$> signedInt16be <*> signedInt16be <*> signedInt32be <*> kafkaNullableString
 
-kafkaRequest :: Parser (Either String (RequestMetadata, KafkaRequest))
+kafkaRequest :: Parser (RequestMetadata, KafkaRequest)
 kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
   case apiKey of
     3 -> do
       request <- metadataRequest apiVersion
-      return . Right $ (metadata, request)
-    _ -> return . Left $ "Unknown request type"
+      return (metadata, request)
+    _ -> fail "Unknown request type"

@@ -28,15 +28,12 @@ handleRequest :: ByteString -> ByteString
 handleRequest request =
   case parseOnly (kafkaRequest <* endOfInput) request of
     Left err -> fromString "Oops"
-    Right req ->
-      case req of
-        Left err -> fromString err
-        Right ((_, _, correlationId, _), validReq) ->
-          let
-            putCorrelationId = putWord32be . fromIntegral $ correlationId
-            putResponse = putByteString . writeResponse . respondToRequest $ validReq
-          in
-            runPut $ putCorrelationId *> putResponse
+    Right ((_, _, correlationId, _), req) ->
+      let
+        putCorrelationId = putWord32be . fromIntegral $ correlationId
+        putResponse = putByteString . writeResponse . respondToRequest $ req
+      in
+        runPut $ putCorrelationId *> putResponse
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
