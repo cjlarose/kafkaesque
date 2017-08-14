@@ -34,7 +34,6 @@ executable kafkaesque-exe
                      , network
                      , utf8-string
                      , bytestring
-                     , binary-strict
                      , cereal
                      , attoparsec
   default-language:    Haskell2010

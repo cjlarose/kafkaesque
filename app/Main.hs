@@ -8,11 +8,11 @@ import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
-import Data.Binary.Strict.Get (runGet, getWord32be)
 import Control.Monad (forever)
 import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
 import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
+import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 
 respondToRequest :: KafkaRequest -> KafkaResponse
@@ -39,7 +39,7 @@ runConn (sock, _) = do
   handle <- socketToHandle sock ReadWriteMode
   forever $ do
     len <- hGet handle 4
-    let (res, _) = runGet getWord32be len
+    let res = runGet getWord32be len
     case res of
       Left err -> return ()
       Right lenAsWord -> do
