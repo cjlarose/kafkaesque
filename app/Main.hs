@@ -1,6 +1,6 @@
 module Main where
 
-import Data.Int (Int32)
+import Data.Int (Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Control.Concurrent (forkIO)
 import Network.Socket hiding (send, recv)
@@ -16,6 +16,14 @@ import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 
 respondToRequest :: KafkaRequest -> KafkaResponse
+respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
+  let
+    partitionResponse (partitionId, _) = (fromIntegral partitionId, NoError, 0 :: Int64)
+    topicResponse (name, parts) = (name, map partitionResponse parts)
+    topicResponses = map topicResponse ts
+    throttleTimeMs = 0 :: Int32
+  in
+    ProduceResponseV0 topicResponses throttleTimeMs
 respondToRequest (TopicMetadataRequest (ApiVersion 0) ts) =
   let
     brokers = [Broker 42 "localhost" 9092]
