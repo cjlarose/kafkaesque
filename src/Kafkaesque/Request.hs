@@ -1,12 +1,13 @@
-module Kafkaesque.Request (KafkaRequest(..), kafkaRequest) where
+module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..)) where
 
 import Data.Int (Int16, Int32)
 import Data.ByteString.UTF8 (toString)
 import Data.Attoparsec.ByteString (Parser, take, count)
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be)
 
-data KafkaRequest = TopicMetadataRequest (Maybe [String])
-type RequestMetadata = (Int16, Int16, Int32, Maybe String)
+newtype ApiVersion = ApiVersion Int
+data KafkaRequest = TopicMetadataRequest ApiVersion (Maybe [String])
+type RequestMetadata = (Int16, ApiVersion, Int32, Maybe String)
 
 signedInt16be :: Parser Int16
 signedInt16be = fromIntegral <$> anyWord16be
@@ -38,12 +39,12 @@ kafkaArray p = do
   else
     Just <$> count (fromIntegral len) p
 
-metadataRequest :: Parser KafkaRequest
-metadataRequest = TopicMetadataRequest <$> kafkaArray kafkaString
+metadataRequest :: ApiVersion -> Parser KafkaRequest
+metadataRequest (ApiVersion v) | v <= 3 = TopicMetadataRequest (ApiVersion v) <$> kafkaArray kafkaString
 
 requestMessageHeader :: Parser RequestMetadata
 requestMessageHeader =
-  (\apiKey apiVersion correlationId clientId -> (apiKey, apiVersion, correlationId, clientId))
+  (\apiKey apiVersion correlationId clientId -> (apiKey, ApiVersion . fromIntegral $ apiVersion, correlationId, clientId))
     <$> signedInt16be <*> signedInt16be <*> signedInt32be <*> kafkaNullableString
 
 kafkaRequest :: Parser (Either String (RequestMetadata, KafkaRequest))
@@ -51,6 +52,6 @@ kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
   case apiKey of
     3 -> do
-      request <- metadataRequest
+      request <- metadataRequest apiVersion
       return . Right $ (metadata, request)
     _ -> return . Left $ "Unknown request type"

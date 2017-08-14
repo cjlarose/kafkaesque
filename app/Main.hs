@@ -10,13 +10,13 @@ import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Data.Binary.Strict.Get (runGet, getWord32be)
 import Control.Monad (forever)
-import Kafkaesque.Request (KafkaRequest(..), kafkaRequest)
+import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
 import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 
 respondToRequest :: KafkaRequest -> KafkaResponse
-respondToRequest (TopicMetadataRequest ts) =
+respondToRequest (TopicMetadataRequest (ApiVersion 0) ts) =
   let
     topics = fromMaybe [] ts
     brokers = [Broker 42 "localhost" 9092]
