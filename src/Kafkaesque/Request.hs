@@ -11,10 +11,10 @@ import Data.Attoparsec.Binary (anyWord16be, anyWord32be, anyWord64be)
 newtype ApiVersion = ApiVersion Int
 data Message = Message Word32 Word8 Word8 ByteString ByteString
 type MessageSet = [(Int64, Message)]
-type PartitionData = (Int, MessageSet)
+type PartitionData = (Int32, MessageSet)
 type TopicData = (String, [PartitionData])
-newtype TimeoutMs = TimeoutMs Int
-data KafkaRequest = ProduceRequest ApiVersion Int TimeoutMs [TopicData]
+newtype TimeoutMs = TimeoutMs Int32
+data KafkaRequest = ProduceRequest ApiVersion Int16 TimeoutMs [TopicData]
                   | TopicMetadataRequest ApiVersion (Maybe [String])
 type RequestMetadata = (Int16, ApiVersion, Int32, Maybe String)
 
@@ -80,14 +80,14 @@ produceRequest (ApiVersion v) | v <= 2 =
         Right xs -> return xs
 
     partitionData :: Parser PartitionData
-    partitionData = (\partitionId msgs -> (partitionId, msgs)) <$> (fromIntegral <$> signedInt32be) <*> records
+    partitionData = (\partitionId msgs -> (partitionId, msgs)) <$> signedInt32be <*> records
 
     topicData :: Parser TopicData
     topicData = (\name parts -> (name, parts)) <$> kafkaString <*> (fromMaybe [] <$> kafkaArray partitionData)
   in
     ProduceRequest (ApiVersion v) <$>
-      (fromIntegral <$> signedInt16be) <*>
-      (TimeoutMs . fromIntegral <$> signedInt32be) <*>
+      signedInt16be <*>
+      (TimeoutMs <$> signedInt32be) <*>
       (fromMaybe [] <$> kafkaArray topicData)
 
 requestMessageHeader :: Parser RequestMetadata
