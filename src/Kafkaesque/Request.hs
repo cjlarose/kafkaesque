@@ -50,8 +50,9 @@ requestMessageHeader =
 kafkaRequest :: Parser (RequestMetadata, KafkaRequest)
 kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
-  case apiKey of
-    3 -> do
-      request <- metadataRequest apiVersion
-      return (metadata, request)
-    _ -> fail "Unknown request type"
+  let
+    requestParser 3 = Just metadataRequest
+    requestParser _ = Nothing
+  case requestParser apiKey of
+    Just parser -> (\r -> (metadata, r)) <$> parser apiVersion
+    _           -> fail "Unknown request type"
