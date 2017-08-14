@@ -5,17 +5,23 @@ import Data.Serialize.Put (Put, runPut, putWord16be, putWord32be, putByteString)
 import Data.ByteString (ByteString)
 import Data.ByteString.UTF8 (fromString)
 
-data Broker = Broker Int32 String Int32
+data Broker = Broker Int String Int
 data KafkaError = NoError | UnknownTopicOrPartition
-data PartitionMetadata = PartitionMetadata KafkaError Int32 Int32 [Int32] [Int32]
+data PartitionMetadata = PartitionMetadata KafkaError Int Int [Int] [Int]
 data TopicMetadata = TopicMetadata KafkaError String [PartitionMetadata]
 data KafkaResponse = TopicMetadataResponseV0 [Broker] [TopicMetadata]
 
+putInt16be :: Int -> Put
+putInt16be = putWord16be . fromIntegral
+
+putInt32be :: Int -> Put
+putInt32be = putWord32be . fromIntegral
+
 putKafkaString :: String -> Put
-putKafkaString s = (putWord16be . fromIntegral . length $ s) *> putByteString (fromString s)
+putKafkaString s = (putInt16be . length $ s) *> putByteString (fromString s)
 
 putKafkaArray :: (a -> Put) -> [a] -> Put
-putKafkaArray putter xs = (putWord32be . fromIntegral . length $ xs) *> mapM_ putter xs
+putKafkaArray putter xs = (putInt32be . length $ xs) *> mapM_ putter xs
 
 kafkaErrorCode :: KafkaError -> Int
 kafkaErrorCode NoError = 0
@@ -24,8 +30,7 @@ kafkaErrorCode UnknownTopicOrPartition = 3
 putTopicMetadataResponse :: KafkaResponse -> Put
 putTopicMetadataResponse (TopicMetadataResponseV0 brokers topicMetadata) =
   let
-    putInt32be = putWord32be . fromIntegral
-    putKakfaError = putWord16be . fromIntegral . kafkaErrorCode
+    putKakfaError = putInt16be . kafkaErrorCode
 
     putBroker (Broker nodeId host port) = putInt32be nodeId *> putKafkaString host *> putInt32be port
 
