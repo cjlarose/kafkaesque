@@ -18,7 +18,7 @@ import Data.Serialize.Put (runPut, putWord32be, putByteString)
 respondToRequest :: KafkaRequest -> KafkaResponse
 respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
   let
-    partitionResponse (partitionId, _) = (fromIntegral partitionId, NoError, 0 :: Int64)
+    partitionResponse (partitionId, _) = (partitionId, NoError, 0 :: Int64)
     topicResponse (name, parts) = (name, map partitionResponse parts)
     topicResponses = map topicResponse ts
     throttleTimeMs = 0 :: Int32
