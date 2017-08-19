@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Data.Int (Int32, Int64)
@@ -14,6 +16,7 @@ import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
+import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute_)
 
 respondToRequest :: KafkaRequest -> KafkaResponse
 respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
@@ -63,8 +66,28 @@ mainLoop sock = do
   forkIO (runConn conn)
   mainLoop sock
 
+createTables :: IO ()
+createTables = do
+  conn <- PG.connect PG.defaultConnectInfo { PG.connectDatabase = "kafkaesque", PG.connectUser = "kafkaesque" }
+  PG.execute_ conn "CREATE TEMPORARY TABLE topics \
+                   \ ( id SERIAL PRIMARY KEY \
+                   \ , name text NOT NULL UNIQUE \
+                   \ , partition_count int NOT NULL )"
+  PG.execute_ conn "CREATE TEMPORARY TABLE next_offsets \
+                   \ ( topic_id int NOT NULL REFERENCES topics (id) \
+                   \ , partition int NOT NULL \
+                   \ , next_offset bigint NOT NULL \
+                   \ , PRIMARY KEY (topic_id, partition) )"
+  PG.execute_ conn "CREATE TEMPORARY TABLE records \
+                   \ ( topic_id int NOT NULL REFERENCES topics (id) \
+                   \ , partition int NOT NULL \
+                   \ , record bytea NOT NULL \
+                   \ , base_offset bigint NOT NULL )"
+  return ()
+
 main :: IO ()
 main = do
+  createTables
   sock <- socket AF_INET Stream 0
   setSocketOption sock ReuseAddr 1
   bind sock (SockAddrInet 9092 iNADDR_ANY)
