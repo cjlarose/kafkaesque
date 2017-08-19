@@ -10,13 +10,13 @@ import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
-import Control.Monad (forever)
+import Control.Monad (forever, forM_)
 import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
 import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
-import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute_)
+import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute, execute_)
 
 respondToRequest :: KafkaRequest -> KafkaResponse
 respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
@@ -83,6 +83,9 @@ createTables = do
                    \ , partition int NOT NULL \
                    \ , record bytea NOT NULL \
                    \ , base_offset bigint NOT NULL )"
+
+  let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
+  forM_ initialTopics $ PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING"
   return ()
 
 main :: IO ()
