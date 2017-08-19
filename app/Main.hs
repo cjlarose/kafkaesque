@@ -69,16 +69,16 @@ mainLoop sock = do
 createTables :: IO ()
 createTables = do
   conn <- PG.connect PG.defaultConnectInfo { PG.connectDatabase = "kafkaesque", PG.connectUser = "kafkaesque" }
-  PG.execute_ conn "CREATE TEMPORARY TABLE topics \
+  PG.execute_ conn "CREATE TABLE IF NOT EXISTS topics \
                    \ ( id SERIAL PRIMARY KEY \
                    \ , name text NOT NULL UNIQUE \
                    \ , partition_count int NOT NULL )"
-  PG.execute_ conn "CREATE TEMPORARY TABLE next_offsets \
+  PG.execute_ conn "CREATE TABLE IF NOT EXISTS next_offsets \
                    \ ( topic_id int NOT NULL REFERENCES topics (id) \
                    \ , partition int NOT NULL \
                    \ , next_offset bigint NOT NULL \
                    \ , PRIMARY KEY (topic_id, partition) )"
-  PG.execute_ conn "CREATE TEMPORARY TABLE records \
+  PG.execute_ conn "CREATE TABLE IF NOT EXISTS records \
                    \ ( topic_id int NOT NULL REFERENCES topics (id) \
                    \ , partition int NOT NULL \
                    \ , record bytea NOT NULL \
