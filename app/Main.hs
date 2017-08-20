@@ -25,14 +25,14 @@ writeMessageBatch pool topic partition messages =
   Pool.withResource pool (\conn -> do
     [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
     PG.withTransaction conn $ do
-      [PG.Only baseOffset] <- PG.query conn "SELECT next_offset FROM next_offsets WHERE topic_id = ? AND partition = ? FOR UPDATE" (topicId, partition) :: IO [PG.Only Int64]
+      [PG.Only baseOffset] <- PG.query conn "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE" (topicId, partition) :: IO [PG.Only Int64]
 
       forM_ (zip messages [0..]) (\((_, message), idx) -> do
         let messageBytes = runPut $ putMessage message
         let offset = baseOffset + idx
-        PG.execute conn "INSERT INTO records (topic_id, partition, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, PG.Binary messageBytes, offset))
+        PG.execute conn "INSERT INTO records (topic_id, partition_id, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, PG.Binary messageBytes, offset))
 
-      PG.execute conn "UPDATE next_offsets SET next_offset = next_offset + ? WHERE topic_id = ? AND partition = ?" (Prelude.length messages, topicId, partition)
+      PG.execute conn "UPDATE partitions SET next_offset = next_offset + ? WHERE topic_id = ? AND partition_id = ?" (Prelude.length messages, topicId, partition)
     return (NoError, 0 :: Int64))
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
@@ -90,23 +90,24 @@ createTables conn = do
                    \ ( id SERIAL PRIMARY KEY \
                    \ , name text NOT NULL UNIQUE \
                    \ , partition_count int NOT NULL )"
-  PG.execute_ conn "CREATE TABLE IF NOT EXISTS next_offsets \
+  PG.execute_ conn "CREATE TABLE IF NOT EXISTS partitions \
                    \ ( topic_id int NOT NULL REFERENCES topics (id) \
-                   \ , partition int NOT NULL \
+                   \ , partition_id int NOT NULL \
                    \ , next_offset bigint NOT NULL \
-                   \ , PRIMARY KEY (topic_id, partition) )"
+                   \ , PRIMARY KEY (topic_id, partition_id) )"
   PG.execute_ conn "CREATE TABLE IF NOT EXISTS records \
-                   \ ( topic_id int NOT NULL REFERENCES topics (id) \
-                   \ , partition int NOT NULL \
+                   \ ( topic_id int NOT NULL \
+                   \ , partition_id int NOT NULL \
                    \ , record bytea NOT NULL \
-                   \ , base_offset bigint NOT NULL )"
+                   \ , base_offset bigint NOT NULL \
+                   \ , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions )"
 
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
   forM_ initialTopics (\(topic, partitionCount) -> do
     PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING" (topic, partitionCount)
     [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
     forM_ [0..(partitionCount - 1)] (\partitionId ->
-      PG.execute conn "INSERT INTO next_offsets (topic_id, partition, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING" (topicId, partitionId, 0 :: Int64)))
+      PG.execute conn "INSERT INTO partitions (topic_id, partition_id, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING" (topicId, partitionId, 0 :: Int64)))
 
 main :: IO ()
 main = do
