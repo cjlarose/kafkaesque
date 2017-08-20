@@ -23,16 +23,19 @@ writeMessageSet :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> I
 writeMessageSet pool topic partition messages =
   Pool.withResource pool (\conn -> do
     [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
-    PG.withTransaction conn $ do
-      [PG.Only baseOffset] <- PG.query conn "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE" (topicId, partition) :: IO [PG.Only Int64]
 
-      forM_ (zip messages [0..]) (\((_, message), idx) -> do
-        let messageBytes = runPut $ putMessage message
-        let offset = baseOffset + idx
-        PG.execute conn "INSERT INTO records (topic_id, partition_id, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, PG.Binary messageBytes, offset))
+    baseOffset <- PG.withTransaction conn $ do
+                    [PG.Only baseOffset] <- PG.query conn "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE" (topicId, partition) :: IO [PG.Only Int64]
 
-      PG.execute conn "UPDATE partitions SET next_offset = next_offset + ? WHERE topic_id = ? AND partition_id = ?" (Prelude.length messages, topicId, partition)
-    return (NoError, 0 :: Int64))
+                    forM_ (zip messages [0..]) (\((_, message), idx) -> do
+                      let messageBytes = runPut $ putMessage message
+                      let offset = baseOffset + idx
+                      PG.execute conn "INSERT INTO records (topic_id, partition_id, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, PG.Binary messageBytes, offset))
+
+                    PG.execute conn "UPDATE partitions SET next_offset = next_offset + ? WHERE topic_id = ? AND partition_id = ?" (Prelude.length messages, topicId, partition)
+                    return baseOffset
+
+    return (NoError, baseOffset))
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
