@@ -18,7 +18,7 @@ import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute, execute_)
 
-respondToRequest :: KafkaRequest -> KafkaResponse
+respondToRequest :: KafkaRequest -> IO KafkaResponse
 respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
   let
     partitionResponse (partitionId, _) = (partitionId, NoError, 0 :: Int64)
@@ -26,24 +26,24 @@ respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
     topicResponses = map topicResponse ts
     throttleTimeMs = 0 :: Int32
   in
-    ProduceResponseV0 topicResponses throttleTimeMs
+    pure $ ProduceResponseV0 topicResponses throttleTimeMs
 respondToRequest (TopicMetadataRequest (ApiVersion 0) ts) =
   let
     brokers = [Broker 42 "localhost" 9092]
     topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ] ]
   in
-    TopicMetadataResponseV0 brokers topicMetadata
+    pure $ TopicMetadataResponseV0 brokers topicMetadata
 
-handleRequest :: ByteString -> ByteString
+handleRequest :: ByteString -> IO ByteString
 handleRequest request =
   case parseOnly (kafkaRequest <* endOfInput) request of
-    Left err -> fromString "Oops"
-    Right ((_, _, correlationId, _), req) ->
+    Left err -> pure . fromString $ "Oops"
+    Right ((_, _, correlationId, _), req) -> do
+      response <- respondToRequest req
       let
         putCorrelationId = putWord32be . fromIntegral $ correlationId
-        putResponse = putByteString . writeResponse . respondToRequest $ req
-      in
-        runPut $ putCorrelationId *> putResponse
+        putResponse = putByteString . writeResponse $ response
+      pure . runPut $ putCorrelationId *> putResponse
 
 runConn :: (Socket, SockAddr) -> IO ()
 runConn (sock, _) = do
@@ -56,7 +56,7 @@ runConn (sock, _) = do
       Right lenAsWord -> do
         let msgLen = fromIntegral lenAsWord :: Int32
         msg <- hGet handle . fromIntegral $ msgLen
-        let response = handleRequest msg
+        response <- handleRequest msg
         hPut handle . runPut . putWord32be . fromIntegral . Data.ByteString.length $ response
         hPut handle response
 
