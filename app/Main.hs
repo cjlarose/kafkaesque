@@ -10,23 +10,27 @@ import Network.Socket.ByteString (send, recv)
 import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
-import Control.Monad (forever, forM_)
-import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
+import Control.Monad (forever, forM, forM_)
+import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), MessageSet, kafkaRequest)
 import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
 import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute, execute_)
 
+writeMessageBatch :: String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
+writeMessageBatch topic partition messages = return (NoError, 0 :: Int64)
+
 respondToRequest :: KafkaRequest -> IO KafkaResponse
-respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) =
-  let
-    partitionResponse (partitionId, _) = (partitionId, NoError, 0 :: Int64)
-    topicResponse (name, parts) = (name, map partitionResponse parts)
-    topicResponses = map topicResponse ts
-    throttleTimeMs = 0 :: Int32
-  in
-    pure $ ProduceResponseV0 topicResponses throttleTimeMs
+respondToRequest (ProduceRequest (ApiVersion 1) acks timeout ts) = do
+  topicResponses <- forM ts (\(topic, parts) -> do
+                      partResponses <- forM parts (\(partitionId, messageSet) -> do
+                        (err, offset) <- writeMessageBatch topic partitionId messageSet
+                        return (partitionId, err, offset))
+                      return (topic, partResponses) )
+
+  let throttleTimeMs = 0 :: Int32
+  return $ ProduceResponseV0 topicResponses throttleTimeMs
 respondToRequest (TopicMetadataRequest (ApiVersion 0) ts) =
   let
     brokers = [Broker 42 "localhost" 9092]

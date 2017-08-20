@@ -1,4 +1,4 @@
-module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..)) where
+module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..), MessageSet) where
 
 import Data.Word (Word8, Word32)
 import Data.Int (Int16, Int32, Int64)
