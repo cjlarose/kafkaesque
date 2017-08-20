@@ -17,22 +17,22 @@ import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
-import Database.PostgreSQL.Simple as PG (Connection, Only(..), Binary(..), connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_, withTransaction, query)
-import Data.Pool as Pool (Pool, createPool, withResource)
+import qualified Database.PostgreSQL.Simple as PG
+import qualified Data.Pool as Pool
 
 writeMessageBatch :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
 writeMessageBatch pool topic partition messages =
-  withResource pool (\conn -> do
-    [Only topicId] <- query conn "SELECT id FROM topics WHERE name = ?" (Only topic) :: IO [Only Int32]
-    withTransaction conn $ do
-      [Only baseOffset] <- query conn "SELECT next_offset FROM next_offsets WHERE topic_id = ? AND partition = ? FOR UPDATE" (topicId, partition) :: IO [Only Int64]
+  Pool.withResource pool (\conn -> do
+    [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
+    PG.withTransaction conn $ do
+      [PG.Only baseOffset] <- PG.query conn "SELECT next_offset FROM next_offsets WHERE topic_id = ? AND partition = ? FOR UPDATE" (topicId, partition) :: IO [PG.Only Int64]
 
       forM_ (zip messages [0..]) (\((_, message), idx) -> do
         let messageBytes = runPut $ putMessage message
         let offset = baseOffset + idx
-        execute conn "INSERT INTO records (topic_id, partition, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, Binary messageBytes, offset))
+        PG.execute conn "INSERT INTO records (topic_id, partition, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, PG.Binary messageBytes, offset))
 
-      execute conn "UPDATE next_offsets SET next_offset = next_offset + ? WHERE topic_id = ? AND partition = ?" (Prelude.length messages, topicId, partition)
+      PG.execute conn "UPDATE next_offsets SET next_offset = next_offset + ? WHERE topic_id = ? AND partition = ?" (Prelude.length messages, topicId, partition)
     return (NoError, 0 :: Int64))
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
@@ -104,7 +104,7 @@ createTables conn = do
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
   forM_ initialTopics (\(topic, partitionCount) -> do
     PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING" (topic, partitionCount)
-    [Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (Only topic) :: IO [Only Int32]
+    [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
     forM_ [0..(partitionCount - 1)] (\partitionId ->
       PG.execute conn "INSERT INTO next_offsets (topic_id, partition, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING" (topicId, partitionId, 0 :: Int64)))
 
