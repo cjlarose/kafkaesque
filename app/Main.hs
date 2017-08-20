@@ -20,8 +20,8 @@ import Data.Serialize.Put (runPut, putWord32be, putByteString)
 import qualified Database.PostgreSQL.Simple as PG
 import qualified Data.Pool as Pool
 
-writeMessageBatch :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
-writeMessageBatch pool topic partition messages =
+writeMessageSet :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
+writeMessageSet pool topic partition messages =
   Pool.withResource pool (\conn -> do
     [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
     PG.withTransaction conn $ do
@@ -39,7 +39,7 @@ respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
   topicResponses <- forM ts (\(topic, parts) -> do
                       partResponses <- forM parts (\(partitionId, messageSet) -> do
-                        (err, offset) <- writeMessageBatch pool topic partitionId messageSet
+                        (err, offset) <- writeMessageSet pool topic partitionId messageSet
                         return (partitionId, err, offset))
                       return (topic, partResponses) )
 
