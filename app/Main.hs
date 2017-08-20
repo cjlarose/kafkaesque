@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Main where
 
@@ -10,6 +11,7 @@ import qualified Data.Pool as Pool
 import Data.Serialize.Get (getWord32be, runGet)
 import Data.Serialize.Put (putWord32be, runPut)
 import qualified Database.PostgreSQL.Simple as PG
+import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString (recv, send)
 import RequestHandlers (handleRequest)
@@ -42,24 +44,24 @@ createTables :: PG.Connection -> IO ()
 createTables conn = do
   PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS topics \
-                   \ ( id SERIAL PRIMARY KEY \
-                   \ , name text NOT NULL UNIQUE )"
+    [sql| CREATE TABLE IF NOT EXISTS topics
+          ( id SERIAL PRIMARY KEY
+          , name text NOT NULL UNIQUE ) |]
   PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS partitions \
-                   \ ( topic_id int NOT NULL REFERENCES topics (id) \
-                   \ , partition_id int NOT NULL \
-                   \ , next_offset bigint NOT NULL \
-                   \ , PRIMARY KEY (topic_id, partition_id) )"
+    [sql| CREATE TABLE IF NOT EXISTS partitions
+          ( topic_id int NOT NULL REFERENCES topics (id)
+          , partition_id int NOT NULL
+          , next_offset bigint NOT NULL
+          , PRIMARY KEY (topic_id, partition_id) ) |]
   PG.execute_
     conn
-    "CREATE TABLE IF NOT EXISTS records \
-                   \ ( topic_id int NOT NULL \
-                   \ , partition_id int NOT NULL \
-                   \ , record bytea NOT NULL \
-                   \ , base_offset bigint NOT NULL \
-                   \ , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions )"
+    [sql| CREATE TABLE IF NOT EXISTS records
+          ( topic_id int NOT NULL
+          , partition_id int NOT NULL
+          , record bytea NOT NULL
+          , base_offset bigint NOT NULL
+          , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions ) |]
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
   forM_
     initialTopics
