@@ -16,7 +16,8 @@ import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
-import Database.PostgreSQL.Simple as PG (connect, defaultConnectInfo, connectDatabase, connectUser, execute, execute_)
+import Database.PostgreSQL.Simple as PG (Connection, connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_)
+import Data.Pool as Pool (Pool, createPool, withResource)
 
 writeMessageBatch :: String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
 writeMessageBatch topic partition messages = return (NoError, 0 :: Int64)
@@ -70,9 +71,8 @@ mainLoop sock = do
   forkIO (runConn conn)
   mainLoop sock
 
-createTables :: IO ()
-createTables = do
-  conn <- PG.connect PG.defaultConnectInfo { PG.connectDatabase = "kafkaesque", PG.connectUser = "kafkaesque" }
+createTables :: PG.Connection -> IO ()
+createTables conn = do
   PG.execute_ conn "CREATE TABLE IF NOT EXISTS topics \
                    \ ( id SERIAL PRIMARY KEY \
                    \ , name text NOT NULL UNIQUE \
@@ -94,7 +94,9 @@ createTables = do
 
 main :: IO ()
 main = do
-  createTables
+  let createConn = PG.connect PG.defaultConnectInfo { PG.connectDatabase = "kafkaesque", PG.connectUser = "kafkaesque" }
+  pool <- Pool.createPool createConn PG.close 1 10 8
+  Pool.withResource pool createTables
   sock <- socket AF_INET Stream 0
   setSocketOption sock ReuseAddr 1
   bind sock (SockAddrInet 9092 iNADDR_ANY)
