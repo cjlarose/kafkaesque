@@ -67,16 +67,15 @@ respondToRequest _ (TopicMetadataRequest (ApiVersion 0) ts) =
     brokers = [Broker 42 "localhost" 9092]
     topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ] ]
   in
-    pure $ TopicMetadataResponseV0 brokers topicMetadata
+    return $ TopicMetadataResponseV0 brokers topicMetadata
 
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
   case parseOnly (kafkaRequest <* endOfInput) request of
-    Left err -> pure . fromString $ err
+    Left err -> return . fromString $ err
     Right ((_, _, correlationId, _), req) -> do
       response <- respondToRequest pool req
       let
         putCorrelationId = putWord32be . fromIntegral $ correlationId
         putResponse = putByteString . writeResponse $ response
-      pure . runPut $ putCorrelationId *> putResponse
-
+      return . runPut $ putCorrelationId *> putResponse
