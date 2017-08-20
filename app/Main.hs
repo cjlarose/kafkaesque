@@ -16,7 +16,7 @@ import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
-import Database.PostgreSQL.Simple as PG (Connection, connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_)
+import Database.PostgreSQL.Simple as PG (Connection, Only(..), connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_, withTransaction, query)
 import Data.Pool as Pool (Pool, createPool, withResource)
 
 writeMessageBatch :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
@@ -89,8 +89,11 @@ createTables conn = do
                    \ , base_offset bigint NOT NULL )"
 
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
-  forM_ initialTopics $ PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING"
-  return ()
+  forM_ initialTopics (\(topic, partitionCount) -> do
+    PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING" (topic, partitionCount)
+    [Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (Only topic) :: IO [Only Int32]
+    forM_ [0..(partitionCount - 1)] (\partitionId ->
+      PG.execute conn "INSERT INTO next_offsets (topic_id, partition, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING" (topicId, partitionId, 0 :: Int64)))
 
 main :: IO ()
 main = do
