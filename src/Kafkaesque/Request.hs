@@ -1,4 +1,4 @@
-module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..), MessageSet) where
+module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..)) where
 
 import Data.Word (Word8, Word32)
 import Data.Int (Int16, Int32, Int64)
@@ -7,10 +7,9 @@ import Data.ByteString (ByteString)
 import Data.ByteString.UTF8 (toString)
 import Data.Attoparsec.ByteString (Parser, parseOnly, take, count, many', anyWord8)
 import Data.Attoparsec.Binary (anyWord16be, anyWord32be, anyWord64be)
+import Kafkaesque.Message (MessageSet, Message(..))
 
 newtype ApiVersion = ApiVersion Int
-data Message = Message Word32 Word8 Word8 ByteString ByteString
-type MessageSet = [(Int64, Message)]
 type PartitionData = (Int32, MessageSet)
 type TopicData = (String, [PartitionData])
 newtype TimeoutMs = TimeoutMs Int32
@@ -51,6 +50,14 @@ kafkaBytes = do
   else
     Data.Attoparsec.ByteString.take (fromIntegral len)
 
+kafkaNullabeBytes :: Parser (Maybe ByteString)
+kafkaNullabeBytes = do
+  len <- signedInt32be
+  if len < 0 then
+    return Nothing
+  else
+    Just <$> Data.Attoparsec.ByteString.take (fromIntegral len)
+
 kafkaArray :: Parser a -> Parser (Maybe [a])
 kafkaArray p = do
   len <- signedInt32be
@@ -66,7 +73,7 @@ produceRequest :: ApiVersion -> Parser KafkaRequest
 produceRequest (ApiVersion v) | v <= 2 =
   let
     message :: Parser Message
-    message = Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*> kafkaBytes <*> kafkaBytes
+    message = Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*> kafkaNullabeBytes <*> kafkaNullabeBytes
 
     mesasgeSetElement :: Parser (Int64, Message)
     mesasgeSetElement = (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> message

@@ -11,16 +11,29 @@ import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Control.Monad (forever, forM, forM_)
-import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), MessageSet, kafkaRequest)
-import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), writeResponse)
+import Kafkaesque.Message (MessageSet, Message)
+import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
+import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), putMessage, writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 import Data.Serialize.Get (runGet, getWord32be)
 import Data.Serialize.Put (runPut, putWord32be, putByteString)
-import Database.PostgreSQL.Simple as PG (Connection, Only(..), connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_, withTransaction, query)
+import Database.PostgreSQL.Simple as PG (Connection, Only(..), Binary(..), connect, defaultConnectInfo, connectDatabase, connectUser, close, execute, execute_, withTransaction, query)
 import Data.Pool as Pool (Pool, createPool, withResource)
 
 writeMessageBatch :: Pool.Pool PG.Connection -> String -> Int32 -> MessageSet -> IO (KafkaError, Int64)
-writeMessageBatch _ topic partition messages = return (NoError, 0 :: Int64)
+writeMessageBatch pool topic partition messages =
+  withResource pool (\conn -> do
+    [Only topicId] <- query conn "SELECT id FROM topics WHERE name = ?" (Only topic) :: IO [Only Int32]
+    withTransaction conn $ do
+      [Only baseOffset] <- query conn "SELECT next_offset FROM next_offsets WHERE topic_id = ? AND partition = ? FOR UPDATE" (topicId, partition) :: IO [Only Int64]
+
+      forM_ (zip messages [0..]) (\((_, message), idx) -> do
+        let messageBytes = runPut $ putMessage message
+        let offset = baseOffset + idx
+        execute conn "INSERT INTO records (topic_id, partition, record, base_offset) VALUES (?, ?, ?, ?)" (topicId, partition, Binary messageBytes, offset))
+
+      execute conn "UPDATE next_offsets SET next_offset = next_offset + ? WHERE topic_id = ? AND partition = ?" (Prelude.length messages, topicId, partition)
+    return (NoError, 0 :: Int64))
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
@@ -42,7 +55,7 @@ respondToRequest _ (TopicMetadataRequest (ApiVersion 0) ts) =
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
   case parseOnly (kafkaRequest <* endOfInput) request of
-    Left err -> pure . fromString $ "Oops"
+    Left err -> pure . fromString $ err
     Right ((_, _, correlationId, _), req) -> do
       response <- respondToRequest pool req
       let

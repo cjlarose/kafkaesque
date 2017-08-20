@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Kafkaesque.Request
                      , Kafkaesque.Response
+                     , Kafkaesque.Message
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , attoparsec-binary

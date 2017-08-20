@@ -1,9 +1,11 @@
-module Kafkaesque.Response (Broker(..), KafkaError(..), PartitionMetadata(..), TopicMetadata(..), KafkaResponse(..), writeResponse) where
+module Kafkaesque.Response (Broker(..), KafkaError(..), PartitionMetadata(..), TopicMetadata(..), KafkaResponse(..), writeResponse, putMessage) where
 
 import Data.Int (Int16, Int32, Int64)
-import Data.Serialize.Put (Put, runPut, putWord16be, putWord32be, putWord64be, putByteString)
+import Data.Serialize.Put (Put, runPut, putWord8, putWord16be, putWord32be, putWord64be, putByteString)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString (length)
 import Data.ByteString.UTF8 (fromString)
+import Kafkaesque.Message (Message(..))
 
 data Broker = Broker Int32 String Int32
 data KafkaError = NoError | UnknownTopicOrPartition
@@ -26,6 +28,15 @@ putInt64be = putWord64be . fromIntegral
 putKafkaString :: String -> Put
 putKafkaString s = (putInt16be . fromIntegral . length $ s) *> putByteString (fromString s)
 
+putKafkaBytes :: ByteString -> Put
+putKafkaBytes bs = (putInt32be . fromIntegral . Data.ByteString.length $ bs) *> putByteString bs
+
+putKafkaNullabeBytes :: Maybe ByteString -> Put
+putKafkaNullabeBytes bs =
+  case bs of
+    Nothing -> putInt32be (-1)
+    Just bs -> (putInt32be . fromIntegral . Data.ByteString.length $ bs) *> putByteString bs
+
 putKafkaArray :: (a -> Put) -> [a] -> Put
 putKafkaArray putter xs = (putInt32be . fromIntegral . length $ xs) *> mapM_ putter xs
 
@@ -35,6 +46,10 @@ kafkaErrorCode UnknownTopicOrPartition = 3
 
 putKakfaError :: KafkaError -> Put
 putKakfaError = putInt16be . kafkaErrorCode
+
+putMessage :: Message -> Put
+putMessage (Message crc32 magicByte attrs k v) =
+  putWord32be crc32 *> putWord8 magicByte *> putWord8 attrs *> putKafkaNullabeBytes k *> putKafkaNullabeBytes v
 
 putProduceResponse :: KafkaResponse -> Put
 putProduceResponse (ProduceResponseV0 topics throttleTime) =
