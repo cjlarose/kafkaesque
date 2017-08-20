@@ -1,6 +1,5 @@
 module Kafkaesque.Request (KafkaRequest(..), kafkaRequest, ApiVersion(..)) where
 
-import Data.Word (Word8, Word32)
 import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.ByteString (ByteString)

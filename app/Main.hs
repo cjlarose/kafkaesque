@@ -3,7 +3,6 @@
 module Main where
 
 import Data.Int (Int32, Int64)
-import Data.Maybe (fromMaybe)
 import Control.Concurrent (forkIO)
 import Network.Socket hiding (send, recv)
 import Network.Socket.ByteString (send, recv)
@@ -11,7 +10,7 @@ import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (hGet, hPut, ByteString, length)
 import System.IO (IOMode(ReadWriteMode), hClose)
 import Control.Monad (forever, forM, forM_)
-import Kafkaesque.Message (MessageSet, Message)
+import Kafkaesque.Message (MessageSet)
 import Kafkaesque.Request (KafkaRequest(..), ApiVersion(..), kafkaRequest)
 import Kafkaesque.Response (Broker(..), TopicMetadata(..), PartitionMetadata(..), KafkaError(..), KafkaResponse(..), putMessage, writeResponse)
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
