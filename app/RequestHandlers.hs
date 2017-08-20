@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module RequestHandlers (handleRequest) where
 
@@ -8,6 +9,7 @@ import Data.Serialize.Put (runPut, putWord32be, putByteString)
 import Data.ByteString.UTF8 (fromString)
 import Data.ByteString (ByteString)
 import qualified Database.PostgreSQL.Simple as PG
+import Database.PostgreSQL.Simple.SqlQQ (sql)
 import qualified Data.Pool as Pool
 import Data.Attoparsec.ByteString (parseOnly, endOfInput)
 
@@ -52,6 +54,15 @@ writeMessageSet pool topic partition messages =
                     return baseOffset
     return (NoError, baseOffset))
 
+getTopics :: PG.Connection -> IO [(String, Int64)]
+getTopics conn = do
+  let query = [sql| SELECT name, partition_count
+                    FROM (SELECT topic_id, COUNT(*) AS partition_count
+                          FROM partitions
+                          GROUP BY topic_id) t1
+                    LEFT JOIN topics ON t1.topic_id = topics.id;        |]
+  PG.query_ conn query
+
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
   topicResponses <- forM ts (\(topic, parts) -> do
@@ -62,12 +73,14 @@ respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
 
   let throttleTimeMs = 0 :: Int32
   return $ ProduceResponseV0 topicResponses throttleTimeMs
-respondToRequest _ (TopicMetadataRequest (ApiVersion 0) ts) =
-  let
-    brokers = [Broker 42 "localhost" 9092]
-    topicMetadata = [ TopicMetadata NoError "topic-a" [ PartitionMetadata NoError 0 42 [42] [42] ] ]
-  in
-    return $ TopicMetadataResponseV0 brokers topicMetadata
+respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
+  let brokerNodeId = 42
+  let brokers = [Broker brokerNodeId "localhost" 9092]
+  let makePartitionMetadata partitionId = PartitionMetadata NoError (fromIntegral partitionId) brokerNodeId [brokerNodeId] [brokerNodeId]
+  let makeTopicMetadata (name, partitionCount) = TopicMetadata NoError name (map makePartitionMetadata [0..(partitionCount - 1)])
+  topics <- Pool.withResource pool getTopics
+  let topicMetadata = map makeTopicMetadata topics
+  return $ TopicMetadataResponseV0 brokers topicMetadata
 
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
