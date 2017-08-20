@@ -40,8 +40,7 @@ createTables :: PG.Connection -> IO ()
 createTables conn = do
   PG.execute_ conn "CREATE TABLE IF NOT EXISTS topics \
                    \ ( id SERIAL PRIMARY KEY \
-                   \ , name text NOT NULL UNIQUE \
-                   \ , partition_count int NOT NULL )"
+                   \ , name text NOT NULL UNIQUE )"
   PG.execute_ conn "CREATE TABLE IF NOT EXISTS partitions \
                    \ ( topic_id int NOT NULL REFERENCES topics (id) \
                    \ , partition_id int NOT NULL \
@@ -56,7 +55,7 @@ createTables conn = do
 
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
   forM_ initialTopics (\(topic, partitionCount) -> do
-    PG.execute conn "INSERT INTO topics (name, partition_count) VALUES (?, ?) ON CONFLICT DO NOTHING" (topic, partitionCount)
+    PG.execute conn "INSERT INTO topics (name) VALUES (?) ON CONFLICT DO NOTHING" $ PG.Only topic
     [PG.Only topicId] <- PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
     forM_ [0..(partitionCount - 1)] (\partitionId ->
       PG.execute conn "INSERT INTO partitions (topic_id, partition_id, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING" (topicId, partitionId, 0 :: Int64)))
