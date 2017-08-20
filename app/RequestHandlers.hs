@@ -79,10 +79,10 @@ getTopics :: PG.Connection -> IO [(String, Int64)]
 getTopics conn = do
   let query =
         [sql| SELECT name, partition_count
-                    FROM (SELECT topic_id, COUNT(*) AS partition_count
-                          FROM partitions
-                          GROUP BY topic_id) t1
-                    LEFT JOIN topics ON t1.topic_id = topics.id;        |]
+              FROM (SELECT topic_id, COUNT(*) AS partition_count
+                    FROM partitions
+                    GROUP BY topic_id) t1
+              LEFT JOIN topics ON t1.topic_id = topics.id; |]
   PG.query_ conn query
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
