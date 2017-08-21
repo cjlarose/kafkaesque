@@ -4,7 +4,9 @@
 module Main where
 
 import Control.Concurrent (forkIO)
-import Control.Monad (forM, forM_, forever)
+import Control.Exception (SomeException(..), handle)
+import Control.Monad (forM, forM_)
+import Control.Monad.Fix (fix)
 import Data.ByteString (hGet, hPut, length)
 import Data.Int (Int32, Int64)
 import qualified Data.Pool as Pool
@@ -19,20 +21,24 @@ import System.IO (IOMode(ReadWriteMode), hClose)
 
 runConn :: Pool.Pool PG.Connection -> (Socket, SockAddr) -> IO ()
 runConn pool (sock, _) = do
-  handle <- socketToHandle sock ReadWriteMode
-  forever $ do
-    len <- hGet handle 4
-    let res = runGet getWord32be len
-    case res of
-      Left err -> return ()
-      Right lenAsWord -> do
-        let msgLen = fromIntegral lenAsWord :: Int32
-        msg <- hGet handle . fromIntegral $ msgLen
-        response <- handleRequest pool msg
-        hPut handle .
-          runPut . putWord32be . fromIntegral . Data.ByteString.length $
-          response
-        hPut handle response
+  hdl <- socketToHandle sock ReadWriteMode
+  handle (\(SomeException _) -> return ()) $
+    fix
+      (\loop -> do
+         len <- hGet hdl 4
+         let res = runGet getWord32be len
+         case res of
+           Left err -> return ()
+           Right lenAsWord -> do
+             let msgLen = fromIntegral lenAsWord :: Int32
+             msg <- hGet hdl . fromIntegral $ msgLen
+             response <- handleRequest pool msg
+             hPut hdl .
+               runPut . putWord32be . fromIntegral . Data.ByteString.length $
+               response
+             hPut hdl response
+             loop)
+  hClose hdl
 
 mainLoop :: Pool.Pool PG.Connection -> Socket -> IO ()
 mainLoop pool sock = do
