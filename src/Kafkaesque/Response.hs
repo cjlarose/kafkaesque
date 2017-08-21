@@ -127,7 +127,9 @@ putFetchResponse (FetchResponseV0 topics) =
         mapM_
           (\(offset, message) -> do
              let messageBytes = runPut . putMessage $ message
-             putInt64be offset *> putByteString messageBytes)
+             putInt64be offset *>
+               putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
+               putByteString messageBytes)
       putPartition (header, messageSet) =
         putPartitionHeader header *> putMessageSet messageSet
       putTopic (topic, partitions) =
