@@ -24,11 +24,20 @@ type TopicData = (String, [PartitionData])
 newtype TimeoutMs =
   TimeoutMs Int32
 
+type FetchRequestPartition = (Int32, Int64, Int32)
+
+type FetchRequestTopic = (String, [FetchRequestPartition])
+
 data KafkaRequest
   = ProduceRequest ApiVersion
                    Int16
                    TimeoutMs
                    [TopicData]
+  | FetchRequest ApiVersion
+                 Int32
+                 Int32
+                 Int32
+                 [FetchRequestTopic]
   | TopicMetadataRequest ApiVersion
                          (Maybe [String])
 
@@ -112,6 +121,22 @@ produceRequest (ApiVersion v)
        (TimeoutMs <$> signedInt32be) <*>
        (fromMaybe [] <$> kafkaArray topicData)
 
+fetchRequestPartition :: Parser FetchRequestPartition
+fetchRequestPartition =
+  (\a b c -> (a, b, c)) <$> signedInt32be <*> signedInt64be <*> signedInt32be
+
+fetchRequestTopic :: Parser FetchRequestTopic
+fetchRequestTopic =
+  (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
+  (fromMaybe [] <$> kafkaArray fetchRequestPartition)
+
+fetchRequest :: ApiVersion -> Parser KafkaRequest
+fetchRequest (ApiVersion v)
+  | v <= 2 =
+    FetchRequest (ApiVersion v) <$> signedInt32be <*> signedInt32be <*>
+    signedInt32be <*>
+    (fromMaybe [] <$> kafkaArray fetchRequestTopic)
+
 requestMessageHeader :: Parser RequestMetadata
 requestMessageHeader =
   (\apiKey apiVersion correlationId clientId ->
@@ -125,6 +150,7 @@ kafkaRequest :: Parser (RequestMetadata, KafkaRequest)
 kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
   let requestParser 0 = Just produceRequest
+      requestParser 1 = Just fetchRequest
       requestParser 3 = Just metadataRequest
       requestParser _ = Nothing
   case requestParser apiKey of
