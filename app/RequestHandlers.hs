@@ -101,6 +101,8 @@ respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
          return (topic, partResponses))
   let throttleTimeMs = 0 :: Int32
   return $ ProduceResponseV0 topicResponses throttleTimeMs
+respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts) = do
+  return $ FetchResponseV0 []
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]

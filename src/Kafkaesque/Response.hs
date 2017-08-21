@@ -15,7 +15,7 @@ import Data.Int (Int16, Int32, Int64)
 import Data.Serialize.Put
        (Put, putByteString, putWord16be, putWord32be, putWord64be,
         putWord8, runPut)
-import Kafkaesque.Message (Message(..))
+import Kafkaesque.Message (Message(..), MessageSet)
 
 data Broker =
   Broker Int32
@@ -42,9 +42,16 @@ type ProduceResponsePartition = (Int32, KafkaError, Int64)
 
 type ProduceResponseTopic = (String, [ProduceResponsePartition])
 
+type PartitionHeader = (Int32, KafkaError, Int64)
+
+type FetchResponsePartition = (PartitionHeader, MessageSet)
+
+type FetchResponseTopic = (String, [FetchResponsePartition])
+
 data KafkaResponse
   = ProduceResponseV0 [ProduceResponseTopic]
                       Int32
+  | FetchResponseV0 [FetchResponseTopic]
   | TopicMetadataResponseV0 [Broker]
                             [TopicMetadata]
 
@@ -112,7 +119,23 @@ putTopicMetadataResponse (TopicMetadataResponseV0 brokers topicMetadata) =
   in putKafkaArray putBroker brokers *>
      putKafkaArray putTopicMetadata topicMetadata
 
+putFetchResponse :: KafkaResponse -> Put
+putFetchResponse (FetchResponseV0 topics) =
+  let putPartitionHeader (partitionId, err, highWatermark) =
+        putInt32be partitionId *> putKakfaError err *> putInt64be highWatermark
+      putMessageSet =
+        mapM_
+          (\(offset, message) -> do
+             let messageBytes = runPut . putMessage $ message
+             putInt64be offset *> putByteString messageBytes)
+      putPartition (header, messageSet) =
+        putPartitionHeader header *> putMessageSet messageSet
+      putTopic (topic, partitions) =
+        putKafkaString topic *> putKafkaArray putPartition partitions
+  in putKafkaArray putTopic topics
+
 writeResponse :: KafkaResponse -> ByteString
 writeResponse resp@(ProduceResponseV0 _ _) = runPut . putProduceResponse $ resp
+writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
 writeResponse resp@(TopicMetadataResponseV0 _ _) =
   runPut . putTopicMetadataResponse $ resp
