@@ -7,7 +7,7 @@ import Control.Concurrent (forkIO)
 import Control.Exception (SomeException(..), handle)
 import Control.Monad (forM, forM_)
 import Control.Monad.Fix (fix)
-import Data.ByteString (hGet, hPut, length)
+import Data.ByteString (ByteString, hGet, hPut, length)
 import Data.Int (Int32, Int64)
 import qualified Data.Pool as Pool
 import Data.Serialize.Get (getWord32be, runGet)
@@ -17,21 +17,29 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Network.Socket hiding (recv, send)
 import Network.Socket.ByteString (recv, send)
 import RequestHandlers (handleRequest)
-import System.IO (IOMode(ReadWriteMode), hClose)
+import System.IO (Handle, IOMode(ReadWriteMode), hClose)
+
+getFrame :: Handle -> IO (Maybe ByteString)
+getFrame hdl = do
+  len <- hGet hdl 4
+  let res = runGet getWord32be len
+  case res of
+    Left _ -> return Nothing
+    Right lenAsWord -> do
+      let msgLen = fromIntegral lenAsWord :: Int32
+      msg <- hGet hdl . fromIntegral $ msgLen
+      return . Just $ msg
 
 runConn :: Pool.Pool PG.Connection -> (Socket, SockAddr) -> IO ()
 runConn pool (sock, _) = do
   hdl <- socketToHandle sock ReadWriteMode
-  handle (\(SomeException _) -> return ()) $
+  handle (\(SomeException e) -> print e) $
     fix
       (\loop -> do
-         len <- hGet hdl 4
-         let res = runGet getWord32be len
-         case res of
-           Left err -> return ()
-           Right lenAsWord -> do
-             let msgLen = fromIntegral lenAsWord :: Int32
-             msg <- hGet hdl . fromIntegral $ msgLen
+         frame <- getFrame hdl
+         case frame of
+           Nothing -> return ()
+           Just msg -> do
              response <- handleRequest pool msg
              hPut hdl .
                runPut . putWord32be . fromIntegral . Data.ByteString.length $
