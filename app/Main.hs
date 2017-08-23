@@ -19,8 +19,8 @@ import Network.Socket.ByteString (recv, send)
 import RequestHandlers (handleRequest)
 import System.IO (Handle, IOMode(ReadWriteMode), hClose)
 
-getFrame :: Handle -> IO (Maybe ByteString)
-getFrame hdl = do
+getFramedMessage :: Handle -> IO (Maybe ByteString)
+getFramedMessage hdl = do
   len <- hGet hdl 4
   let res = runGet getWord32be len
   case res of
@@ -36,8 +36,8 @@ runConn pool (sock, _) = do
   handle (\(SomeException e) -> print e) $
     fix
       (\loop -> do
-         frame <- getFrame hdl
-         case frame of
+         content <- getFramedMessage hdl
+         case content of
            Nothing -> return ()
            Just msg -> do
              response <- handleRequest pool msg
