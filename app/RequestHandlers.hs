@@ -85,6 +85,10 @@ getTopicsWithPartitionCounts conn = do
               LEFT JOIN topics ON t1.topic_id = topics.id; |]
   PG.query_ conn query
 
+fetchMessages ::
+     PG.Connection -> Int32 -> Int32 -> Int64 -> Int32 -> IO MessageSet
+fetchMessages _ _ _ _ _ = return []
+
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
   topicResponses <-
@@ -102,7 +106,24 @@ respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
   let throttleTimeMs = 0 :: Int32
   return $ ProduceResponseV0 topicResponses throttleTimeMs
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts) = do
-  return $ FetchResponseV0 []
+  topicResponses <-
+    forM
+      ts
+      (\(topic, parts) -> do
+         topicId <- Pool.withResource pool (\conn -> getTopicId conn topic)
+         partResponses <-
+           forM
+             parts
+             (\(partitionId, offset, maxBytes) -> do
+                messageSet <-
+                  Pool.withResource
+                    pool
+                    (\conn ->
+                       fetchMessages conn topicId partitionId offset maxBytes)
+                let header = (partitionId, NoError, 0 :: Int64)
+                return (header, messageSet))
+         return (topic, partResponses))
+  return . FetchResponseV0 $ topicResponses
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]
