@@ -75,8 +75,8 @@ writeMessageSet pool topic partition messages =
            return baseOffset
        return (NoError, baseOffset))
 
-getTopics :: PG.Connection -> IO [(String, Int64)]
-getTopics conn = do
+getTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
+getTopicsWithPartitionCounts conn = do
   let query =
         [sql| SELECT name, partition_count
               FROM (SELECT topic_id, COUNT(*) AS partition_count
@@ -118,7 +118,7 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
           NoError
           name
           (map makePartitionMetadata [0 .. (partitionCount - 1)])
-  topics <- Pool.withResource pool getTopics
+  topics <- Pool.withResource pool getTopicsWithPartitionCounts
   let topicMetadata = map makeTopicMetadata topics
   return $ TopicMetadataResponseV0 brokers topicMetadata
 
