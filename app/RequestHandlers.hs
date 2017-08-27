@@ -217,12 +217,12 @@ respondToRequest pool (ApiVersionsRequest (ApiVersion 0) apiKeys) =
   ApiVersionsResponseV0 NoError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
 handleRequest ::
-     Pool.Pool PG.Connection -> ByteString -> IO (Either String ByteString)
-handleRequest pool request =
-  case parseOnly (kafkaRequest <* endOfInput) request of
-    Left err -> return . Left $ err
-    Right ((_, _, correlationId, _), req) -> do
-      response <- respondToRequest pool req
-      let putCorrelationId = putWord32be . fromIntegral $ correlationId
-          putResponse = putByteString . writeResponse $ response
-      return . Right . runPut $ putCorrelationId *> putResponse
+     Pool.Pool PG.Connection -> ByteString -> Either String (IO ByteString)
+handleRequest pool request = do
+  let parseResult = parseOnly (kafkaRequest <* endOfInput) request
+      generateResponse ((_, _, correlationId, _), req) = do
+        response <- respondToRequest pool req
+        let putCorrelationId = putWord32be . fromIntegral $ correlationId
+            putResponse = putByteString . writeResponse $ response
+        return . runPut $ putCorrelationId *> putResponse
+  generateResponse <$> parseResult

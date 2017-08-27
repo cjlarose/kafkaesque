@@ -40,10 +40,11 @@ runConn pool (sock, _) = do
          case content of
            Nothing -> return ()
            Just msg -> do
-             response <- handleRequest pool msg
+             let response = handleRequest pool msg
              case response of
                Left err -> print err
-               Right responseBytes -> do
+               Right getResponseBytes -> do
+                 responseBytes <- getResponseBytes
                  hPut hdl .
                    runPut . putWord32be . fromIntegral . Data.ByteString.length $
                    responseBytes
