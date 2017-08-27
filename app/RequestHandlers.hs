@@ -38,6 +38,13 @@ getNextOffsetsForUpdate conn topicId partitionId = do
   res <- PG.query conn query (topicId, partitionId) :: IO [(Int64, Int64)]
   return . head $ res
 
+getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
+getNextOffset conn topicId partitionId = do
+  let query =
+        "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ?"
+  [PG.Only res] <- PG.query conn query (topicId, partitionId)
+  return res
+
 insertMessage ::
      PG.Connection
   -> Int32
@@ -158,14 +165,17 @@ respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts) = do
          partResponses <-
            forM
              parts
-             (\(partitionId, offset, maxBytes) -> do
-                messageSet <-
-                  Pool.withResource
-                    pool
-                    (\conn ->
-                       fetchMessages conn topicId partitionId offset maxBytes)
-                let header = (partitionId, NoError, 0 :: Int64)
-                return (header, messageSet))
+             (\(partitionId, offset, maxBytes) ->
+                Pool.withResource
+                  pool
+                  (\conn -> do
+                     messageSet <-
+                       fetchMessages conn topicId partitionId offset maxBytes
+                     highwaterMarkOffset <-
+                       getNextOffset conn topicId partitionId
+                     let header =
+                           (partitionId, NoError, highwaterMarkOffset - 1)
+                     return (header, messageSet)))
          return (topic, partResponses))
   return . FetchResponseV0 $ topicResponses
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
