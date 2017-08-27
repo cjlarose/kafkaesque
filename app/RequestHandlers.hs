@@ -5,9 +5,10 @@ module RequestHandlers
   ( handleRequest
   ) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (foldM, forM)
 import Data.Attoparsec.ByteString (endOfInput, parseOnly)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString
 import Data.ByteString.UTF8 (fromString)
 import Data.Int (Int32, Int64)
 import qualified Data.Pool as Pool
@@ -30,27 +31,39 @@ getTopicId conn topicName = do
     PG.query conn query (PG.Only topicName) :: IO [PG.Only Int32]
   return topicId
 
-getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
-getNextOffset conn topicId partitionId = do
+getNextOffsets :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
+getNextOffsets conn topicId partitionId = do
   let query =
-        "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE"
-  [PG.Only baseOffset] <-
-    PG.query conn query (topicId, partitionId) :: IO [PG.Only Int64]
-  return baseOffset
+        "SELECT next_offset, total_bytes FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE"
+  res <- PG.query conn query (topicId, partitionId) :: IO [(Int64, Int64)]
+  return . head $ res
 
-insertMessage :: PG.Connection -> Int32 -> Int32 -> Int64 -> Message -> IO ()
-insertMessage conn topicId partitionId offset message = do
-  let messageBytes = PG.Binary . runPut $ putMessage message
+insertMessage ::
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> Int64
+  -> Int64
+  -> Message
+  -> IO (Int64, Int64)
+insertMessage conn topicId partitionId logOffset currentTotalBytes message = do
+  let messageBytes = runPut $ putMessage message
+  let messageLen = fromIntegral (Data.ByteString.length messageBytes) :: Int64
+  let endByteOffset = currentTotalBytes + messageLen
   let query =
-        "INSERT INTO records (topic_id, partition_id, record, base_offset) VALUES (?, ?, ?, ?)"
-  PG.execute conn query (topicId, partitionId, messageBytes, offset)
-  return ()
+        "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
+  PG.execute
+    conn
+    query
+    (topicId, partitionId, PG.Binary messageBytes, logOffset, endByteOffset)
+  return (1 :: Int64, messageLen)
 
-incrementNextOffset :: PG.Connection -> Int32 -> Int32 -> Int -> IO ()
-incrementNextOffset conn topicId partitionId amount = do
+updatePartitionOffsets ::
+     PG.Connection -> Int32 -> Int32 -> Int64 -> Int64 -> IO ()
+updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
   let query =
-        "UPDATE partitions SET next_offset = next_offset + ? WHERE topic_id = ? AND partition_id = ?"
-  PG.execute conn query (amount, topicId, partitionId)
+        "UPDATE partitions SET next_offset = ?, total_bytes = ? WHERE topic_id = ? AND partition_id = ?"
+  PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
   return ()
 
 writeMessageSet ::
@@ -66,12 +79,21 @@ writeMessageSet pool topic partition messages =
        topicId <- getTopicId conn topic
        baseOffset <-
          PG.withTransaction conn $ do
-           baseOffset <- getNextOffset conn topicId partition
-           forM_
-             (zip messages [0 ..])
-             (\((_, message), idx) ->
-                insertMessage conn topicId partition (baseOffset + idx) message)
-           incrementNextOffset conn topicId partition $ Prelude.length messages
+           (baseOffset, totalBytes) <- getNextOffsets conn topicId partition
+           (finalOffset, finalTotalBytes) <-
+             foldM
+               (\(offset, bytes) (_, message) -> do
+                  (numMessages, messageSetSize) <-
+                    insertMessage conn topicId partition offset bytes message
+                  return (offset + numMessages, bytes + messageSetSize))
+               (baseOffset, totalBytes)
+               messages
+           updatePartitionOffsets
+             conn
+             topicId
+             partition
+             finalOffset
+             finalTotalBytes
            return baseOffset
        return (NoError, baseOffset))
 

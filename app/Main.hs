@@ -67,6 +67,7 @@ createTables conn = do
           ( topic_id int NOT NULL REFERENCES topics (id)
           , partition_id int NOT NULL
           , next_offset bigint NOT NULL
+          , total_bytes bigint NOT NULL
           , PRIMARY KEY (topic_id, partition_id) ) |]
   PG.execute_
     conn
@@ -74,8 +75,15 @@ createTables conn = do
           ( topic_id int NOT NULL
           , partition_id int NOT NULL
           , record bytea NOT NULL
-          , base_offset bigint NOT NULL
+          , log_offset bigint NOT NULL
+          , byte_offset bigint NOT NULL
           , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions ) |]
+  PG.execute_
+    conn
+    [sql| CREATE INDEX ON records (topic_id, partition_id, log_offset) |]
+  PG.execute_
+    conn
+    [sql| CREATE INDEX ON records (topic_id, partition_id, byte_offset) |]
   let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
   forM_
     initialTopics
@@ -91,8 +99,8 @@ createTables conn = do
          (\partitionId ->
             PG.execute
               conn
-              "INSERT INTO partitions (topic_id, partition_id, next_offset) VALUES (?, ?, ?) ON CONFLICT DO NOTHING"
-              (topicId, partitionId, 0 :: Int64)))
+              "INSERT INTO partitions (topic_id, partition_id, next_offset, total_bytes) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING"
+              (topicId, partitionId, 0 :: Int64, 0 :: Int64)))
 
 main :: IO ()
 main = do
