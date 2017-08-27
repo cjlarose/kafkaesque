@@ -40,6 +40,8 @@ data KafkaRequest
                  [FetchRequestTopic]
   | TopicMetadataRequest ApiVersion
                          (Maybe [String])
+  | ApiVersionsRequest ApiVersion
+                       (Maybe [Int16])
 
 type RequestMetadata = (Int16, ApiVersion, Int32, Maybe String)
 
@@ -146,12 +148,17 @@ requestMessageHeader =
   signedInt32be <*>
   kafkaNullableString
 
+apiVersionsRequest :: ApiVersion -> Parser KafkaRequest
+apiVersionsRequest (ApiVersion v)
+  | v <= 1 = ApiVersionsRequest (ApiVersion v) <$> kafkaArray signedInt16be
+
 kafkaRequest :: Parser (RequestMetadata, KafkaRequest)
 kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
   let requestParser 0 = Just produceRequest
       requestParser 1 = Just fetchRequest
       requestParser 3 = Just metadataRequest
+      requestParser 18 = Just apiVersionsRequest
       requestParser _ = Nothing
   case requestParser apiKey of
     Just parser -> (\r -> (metadata, r)) <$> parser apiVersion

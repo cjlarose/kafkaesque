@@ -54,6 +54,8 @@ data KafkaResponse
   | FetchResponseV0 [FetchResponseTopic]
   | TopicMetadataResponseV0 [Broker]
                             [TopicMetadata]
+  | ApiVersionsResponseV0 KafkaError
+                          [(Int16, Int16, Int16)]
 
 putInt16be :: Int16 -> Put
 putInt16be = putWord16be . fromIntegral
@@ -140,8 +142,16 @@ putFetchResponse (FetchResponseV0 topics) =
         putKafkaString topic *> putKafkaArray putPartition partitions
   in putKafkaArray putTopic topics
 
+putApiVersionsResponse :: KafkaResponse -> Put
+putApiVersionsResponse (ApiVersionsResponseV0 err versions) =
+  let putVersion (apiKey, minVersion, maxVersion) =
+        putInt16be apiKey *> putInt16be minVersion *> putInt16be maxVersion
+  in putKakfaError err *> putKafkaArray putVersion versions
+
 writeResponse :: KafkaResponse -> ByteString
 writeResponse resp@(ProduceResponseV0 _ _) = runPut . putProduceResponse $ resp
 writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
 writeResponse resp@(TopicMetadataResponseV0 _ _) =
   runPut . putTopicMetadataResponse $ resp
+writeResponse resp@(ApiVersionsResponseV0 _ _) =
+  runPut . putApiVersionsResponse $ resp

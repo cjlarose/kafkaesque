@@ -209,6 +209,9 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   topics <- Pool.withResource pool getTopicsWithPartitionCounts
   let topicMetadata = map makeTopicMetadata topics
   return $ TopicMetadataResponseV0 brokers topicMetadata
+respondToRequest pool (ApiVersionsRequest (ApiVersion 0) apiKeys) =
+  return $
+  ApiVersionsResponseV0 NoError [(0, 1, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
