@@ -1,0 +1,217 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+
+module RequestHandlers
+  ( handleRequest
+  ) where
+
+import Control.Monad (foldM, forM)
+import Data.Attoparsec.ByteString (endOfInput, parseOnly)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString
+import Data.ByteString.UTF8 (fromString)
+import Data.Int (Int32, Int64)
+import qualified Data.Pool as Pool
+import Data.Serialize.Put (putByteString, putWord32be, runPut)
+import qualified Database.PostgreSQL.Simple as PG
+import Database.PostgreSQL.Simple.SqlQQ (sql)
+
+import Kafkaesque.Message (Message, MessageSet)
+import Kafkaesque.Request
+       (ApiVersion(..), KafkaRequest(..), kafkaRequest)
+import Kafkaesque.Response
+       (Broker(..), KafkaError(..), KafkaResponse(..),
+        PartitionMetadata(..), TopicMetadata(..), putMessage,
+        writeResponse)
+
+getTopicId :: PG.Connection -> String -> IO Int32
+getTopicId conn topicName = do
+  let query = "SELECT id FROM topics WHERE name = ?"
+  [PG.Only topicId] <-
+    PG.query conn query (PG.Only topicName) :: IO [PG.Only Int32]
+  return topicId
+
+getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
+getNextOffsetsForUpdate conn topicId partitionId = do
+  let query =
+        "SELECT next_offset, total_bytes FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE"
+  res <- PG.query conn query (topicId, partitionId) :: IO [(Int64, Int64)]
+  return . head $ res
+
+getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
+getNextOffset conn topicId partitionId = do
+  let query =
+        "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ?"
+  [PG.Only res] <- PG.query conn query (topicId, partitionId)
+  return res
+
+insertMessage ::
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> Int64
+  -> Int64
+  -> Message
+  -> IO (Int64, Int64)
+insertMessage conn topicId partitionId logOffset currentTotalBytes message = do
+  let messageBytes = runPut $ putMessage message
+  let messageLen = fromIntegral (Data.ByteString.length messageBytes) :: Int64
+  let endByteOffset = currentTotalBytes + messageLen
+  let query =
+        "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
+  PG.execute
+    conn
+    query
+    (topicId, partitionId, PG.Binary messageBytes, logOffset, endByteOffset)
+  return (1 :: Int64, messageLen)
+
+updatePartitionOffsets ::
+     PG.Connection -> Int32 -> Int32 -> Int64 -> Int64 -> IO ()
+updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
+  let query =
+        "UPDATE partitions SET next_offset = ?, total_bytes = ? WHERE topic_id = ? AND partition_id = ?"
+  PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
+  return ()
+
+writeMessageSet ::
+     Pool.Pool PG.Connection
+  -> String
+  -> Int32
+  -> MessageSet
+  -> IO (KafkaError, Int64)
+writeMessageSet pool topic partition messages =
+  Pool.withResource
+    pool
+    (\conn -> do
+       topicId <- getTopicId conn topic
+       baseOffset <-
+         PG.withTransaction conn $ do
+           (baseOffset, totalBytes) <-
+             getNextOffsetsForUpdate conn topicId partition
+           (finalOffset, finalTotalBytes) <-
+             foldM
+               (\(offset, bytes) (_, message) -> do
+                  (numMessages, messageSetSize) <-
+                    insertMessage conn topicId partition offset bytes message
+                  return (offset + numMessages, bytes + messageSetSize))
+               (baseOffset, totalBytes)
+               messages
+           updatePartitionOffsets
+             conn
+             topicId
+             partition
+             finalOffset
+             finalTotalBytes
+           return baseOffset
+       return (NoError, baseOffset))
+
+getTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
+getTopicsWithPartitionCounts conn = do
+  let query =
+        [sql| SELECT name, partition_count
+              FROM (SELECT topic_id, COUNT(*) AS partition_count
+                    FROM partitions
+                    GROUP BY topic_id) t1
+              LEFT JOIN topics ON t1.topic_id = topics.id; |]
+  PG.query_ conn query
+
+fetchMessages ::
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> Int64
+  -> Int32
+  -> IO [(Int64, ByteString)]
+fetchMessages conn topicId partitionId startOffset maxBytes = do
+  let firstMessageQuery =
+        [sql| SELECT byte_offset, octet_length(record)
+              FROM records
+              WHERE topic_id = ?
+              AND partition_id = ?
+              AND log_offset = ? |]
+  resFirstMessage <-
+    PG.query conn firstMessageQuery (topicId, partitionId, startOffset) :: IO [( Int64
+                                                                               , Int64)]
+  case resFirstMessage of
+    [(firstByteOffset, firstMessageLength)] -> do
+      let messageSetQuery =
+            [sql| SELECT log_offset, record
+                  FROM records
+                  WHERE topic_id = ?
+                  AND partition_id = ?
+                  AND byte_offset BETWEEN ? AND ?
+                  ORDER BY byte_offset |]
+      let maxEndOffset =
+            firstByteOffset + fromIntegral maxBytes - firstMessageLength
+      PG.query
+        conn
+        messageSetQuery
+        (topicId, partitionId, firstByteOffset, maxEndOffset)
+    _ -> return []
+
+respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
+respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
+  topicResponses <-
+    forM
+      ts
+      (\(topic, parts) -> do
+         partResponses <-
+           forM
+             parts
+             (\(partitionId, messageSet) -> do
+                (err, offset) <-
+                  writeMessageSet pool topic partitionId messageSet
+                return (partitionId, err, offset))
+         return (topic, partResponses))
+  let throttleTimeMs = 0 :: Int32
+  return $ ProduceResponseV0 topicResponses throttleTimeMs
+respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts) = do
+  topicResponses <-
+    forM
+      ts
+      (\(topic, parts) -> do
+         topicId <- Pool.withResource pool (`getTopicId` topic)
+         partResponses <-
+           forM
+             parts
+             (\(partitionId, offset, maxBytes) ->
+                Pool.withResource
+                  pool
+                  (\conn -> do
+                     messageSet <-
+                       fetchMessages conn topicId partitionId offset maxBytes
+                     highwaterMarkOffset <-
+                       getNextOffset conn topicId partitionId
+                     let header =
+                           (partitionId, NoError, highwaterMarkOffset - 1)
+                     return (header, messageSet)))
+         return (topic, partResponses))
+  return . FetchResponseV0 $ topicResponses
+respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
+  let brokerNodeId = 42
+  let brokers = [Broker brokerNodeId "localhost" 9092]
+  let makePartitionMetadata partitionId =
+        PartitionMetadata
+          NoError
+          (fromIntegral partitionId)
+          brokerNodeId
+          [brokerNodeId]
+          [brokerNodeId]
+  let makeTopicMetadata (name, partitionCount) =
+        TopicMetadata
+          NoError
+          name
+          (map makePartitionMetadata [0 .. (partitionCount - 1)])
+  topics <- Pool.withResource pool getTopicsWithPartitionCounts
+  let topicMetadata = map makeTopicMetadata topics
+  return $ TopicMetadataResponseV0 brokers topicMetadata
+
+handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
+handleRequest pool request =
+  case parseOnly (kafkaRequest <* endOfInput) request of
+    Left err -> return . fromString $ err
+    Right ((_, _, correlationId, _), req) -> do
+      response <- respondToRequest pool req
+      let putCorrelationId = putWord32be . fromIntegral $ correlationId
+          putResponse = putByteString . writeResponse $ response
+      return . runPut $ putCorrelationId *> putResponse
