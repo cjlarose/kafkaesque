@@ -31,8 +31,8 @@ getTopicId conn topicName = do
     PG.query conn query (PG.Only topicName) :: IO [PG.Only Int32]
   return topicId
 
-getNextOffsets :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
-getNextOffsets conn topicId partitionId = do
+getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
+getNextOffsetsForUpdate conn topicId partitionId = do
   let query =
         "SELECT next_offset, total_bytes FROM partitions WHERE topic_id = ? AND partition_id = ? FOR UPDATE"
   res <- PG.query conn query (topicId, partitionId) :: IO [(Int64, Int64)]
@@ -79,7 +79,8 @@ writeMessageSet pool topic partition messages =
        topicId <- getTopicId conn topic
        baseOffset <-
          PG.withTransaction conn $ do
-           (baseOffset, totalBytes) <- getNextOffsets conn topicId partition
+           (baseOffset, totalBytes) <-
+             getNextOffsetsForUpdate conn topicId partition
            (finalOffset, finalTotalBytes) <-
              foldM
                (\(offset, bytes) (_, message) -> do
