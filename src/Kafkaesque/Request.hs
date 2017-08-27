@@ -155,11 +155,11 @@ apiVersionsRequest (ApiVersion v)
 kafkaRequest :: Parser (RequestMetadata, KafkaRequest)
 kafkaRequest = do
   metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
-  let requestParser 0 = Just produceRequest
-      requestParser 1 = Just fetchRequest
-      requestParser 3 = Just metadataRequest
-      requestParser 18 = Just apiVersionsRequest
-      requestParser _ = Nothing
-  case requestParser apiKey of
-    Just parser -> (\r -> (metadata, r)) <$> parser apiVersion
-    _ -> fail "Unknown request type"
+  let requestParser =
+        case apiKey of
+          0 -> produceRequest
+          1 -> fetchRequest
+          3 -> metadataRequest
+          18 -> apiVersionsRequest
+          _ -> const $ fail "Unknown request type"
+  (\r -> (metadata, r)) <$> requestParser apiVersion
