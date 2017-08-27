@@ -84,7 +84,8 @@ createTables conn = do
   PG.execute_
     conn
     [sql| CREATE INDEX ON records (topic_id, partition_id, byte_offset) |]
-  let initialTopics = [("topic-a", 2), ("topic-b", 4)] :: [(String, Int)]
+  let initialTopics =
+        [("topic-a", 2), ("topic-b", 4), ("test", 1)] :: [(String, Int)]
   forM_
     initialTopics
     (\(topic, partitionCount) -> do
