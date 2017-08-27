@@ -108,8 +108,29 @@ getTopicsWithPartitionCounts conn = do
   PG.query_ conn query
 
 fetchMessages ::
-     PG.Connection -> Int32 -> Int32 -> Int64 -> Int32 -> IO MessageSet
-fetchMessages _ _ _ _ _ = return []
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> Int64
+  -> Int32
+  -> IO [(Int64, ByteString)]
+fetchMessages conn topicId partitionId startOffset maxBytes = do
+  let firstMessageQuery =
+        [sql| SELECT byte_offset, octet_length(record)
+              FROM records
+              WHERE log_offset <= ?
+              ORDER BY log_offset DESC
+              LIMIT 1 |]
+  [(firstByteOffset, firstMessageLength)] <-
+    PG.query conn firstMessageQuery $ PG.Only startOffset :: IO [(Int64, Int64)]
+  let messageSetQuery =
+        [sql| SELECT log_offset, record
+              FROM records
+              WHERE byte_offset BETWEEN ? AND ?
+              ORDER BY byte_offset |]
+  let maxEndOffset =
+        firstByteOffset + fromIntegral maxBytes - firstMessageLength
+  PG.query conn messageSetQuery (firstByteOffset, maxEndOffset)
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
@@ -132,7 +153,7 @@ respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts) = do
     forM
       ts
       (\(topic, parts) -> do
-         topicId <- Pool.withResource pool (\conn -> getTopicId conn topic)
+         topicId <- Pool.withResource pool (`getTopicId` topic)
          partResponses <-
            forM
              parts

@@ -44,7 +44,7 @@ type ProduceResponseTopic = (String, [ProduceResponsePartition])
 
 type PartitionHeader = (Int32, KafkaError, Int64)
 
-type FetchResponsePartition = (PartitionHeader, MessageSet)
+type FetchResponsePartition = (PartitionHeader, [(Int64, ByteString)])
 
 type FetchResponseTopic = (String, [FetchResponsePartition])
 
@@ -125,11 +125,10 @@ putFetchResponse (FetchResponseV0 topics) =
         putInt32be partitionId *> putKakfaError err *> putInt64be highWatermark
       putMessageSet =
         mapM_
-          (\(offset, message) -> do
-             let messageBytes = runPut . putMessage $ message
+          (\(offset, messageBytes) ->
              putInt64be offset *>
-               putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
-               putByteString messageBytes)
+             putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
+             putByteString messageBytes)
       putPartition (header, messageSet) = do
         let messageSetBytes = runPut $ putMessageSet messageSet
         let messageSetLen =
