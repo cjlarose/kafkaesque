@@ -5,7 +5,7 @@ module RequestHandlers
   ( handleRequest
   ) where
 
-import Control.Monad (foldM, forM)
+import Control.Monad (forM, forM_)
 import Data.Attoparsec.ByteString (endOfInput, parseOnly)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString
@@ -45,26 +45,6 @@ getNextOffset conn topicId partitionId = do
   [PG.Only res] <- PG.query conn query (topicId, partitionId)
   return res
 
-insertMessage ::
-     PG.Connection
-  -> Int32
-  -> Int32
-  -> Int64
-  -> Int64
-  -> Message
-  -> IO (Int64, Int64)
-insertMessage conn topicId partitionId logOffset currentTotalBytes message = do
-  let messageBytes = runPut $ putMessage message
-  let messageLen = fromIntegral (Data.ByteString.length messageBytes) :: Int64
-  let endByteOffset = currentTotalBytes + messageLen
-  let query =
-        "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
-  PG.execute
-    conn
-    query
-    (topicId, partitionId, PG.Binary messageBytes, logOffset, endByteOffset)
-  return (1 :: Int64, messageLen)
-
 insertMessages ::
      PG.Connection
   -> Int32
@@ -73,13 +53,27 @@ insertMessages ::
   -> Int64
   -> [(Int64, Message)]
   -> IO (Int64, Int64)
-insertMessages conn topicId partitionId baseOffset totalBytes =
-  foldM
-    (\(offset, bytes) (_, message) -> do
-       (numMessages, messageSetSize) <-
-         insertMessage conn topicId partitionId offset bytes message
-       return (offset + numMessages, bytes + messageSetSize))
-    (baseOffset, totalBytes)
+insertMessages conn topicId partitionId baseOffset totalBytes messages = do
+  let (newTuples, finalOffset, finalTotalBytes) =
+        foldl
+          (\(tuples, logOffset, currentTotalBytes) (_, message) ->
+             let messageBytes = runPut $ putMessage message
+                 messageLen =
+                   fromIntegral (Data.ByteString.length messageBytes) :: Int64
+                 endByteOffset = currentTotalBytes + messageLen
+                 tuple =
+                   ( topicId
+                   , partitionId
+                   , PG.Binary messageBytes
+                   , logOffset
+                   , endByteOffset)
+             in (tuple : tuples, logOffset + 1, endByteOffset))
+          ([], baseOffset, totalBytes)
+          messages
+  let query =
+        "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
+  forM_ newTuples $ PG.execute conn query
+  return (finalOffset, finalTotalBytes)
 
 updatePartitionOffsets ::
      PG.Connection -> Int32 -> Int32 -> Int64 -> Int64 -> IO ()
