@@ -213,7 +213,9 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
   case parseOnly (kafkaRequest <* endOfInput) request of
-    Left err -> return . fromString $ err
+    Left err -> do
+      print err
+      return ""
     Right ((_, _, correlationId, _), req) -> do
       response <- respondToRequest pool req
       let putCorrelationId = putWord32be . fromIntegral $ correlationId
