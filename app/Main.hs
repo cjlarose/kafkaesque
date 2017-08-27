@@ -48,7 +48,7 @@ runConn pool (sock, _) = do
                    runPut . putWord32be . fromIntegral . Data.ByteString.length $
                    responseBytes
                  hPut hdl responseBytes
-             loop)
+                 loop)
   hClose hdl
 
 mainLoop :: Pool.Pool PG.Connection -> Socket -> IO ()
