@@ -65,6 +65,22 @@ insertMessage conn topicId partitionId logOffset currentTotalBytes message = do
     (topicId, partitionId, PG.Binary messageBytes, logOffset, endByteOffset)
   return (1 :: Int64, messageLen)
 
+insertMessages ::
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> Int64
+  -> Int64
+  -> [(Int64, Message)]
+  -> IO (Int64, Int64)
+insertMessages conn topicId partitionId baseOffset totalBytes =
+  foldM
+    (\(offset, bytes) (_, message) -> do
+       (numMessages, messageSetSize) <-
+         insertMessage conn topicId partitionId offset bytes message
+       return (offset + numMessages, bytes + messageSetSize))
+    (baseOffset, totalBytes)
+
 updatePartitionOffsets ::
      PG.Connection -> Int32 -> Int32 -> Int64 -> Int64 -> IO ()
 updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
@@ -89,12 +105,12 @@ writeMessageSet pool topic partition messages =
            (baseOffset, totalBytes) <-
              getNextOffsetsForUpdate conn topicId partition
            (finalOffset, finalTotalBytes) <-
-             foldM
-               (\(offset, bytes) (_, message) -> do
-                  (numMessages, messageSetSize) <-
-                    insertMessage conn topicId partition offset bytes message
-                  return (offset + numMessages, bytes + messageSetSize))
-               (baseOffset, totalBytes)
+             insertMessages
+               conn
+               topicId
+               partition
+               baseOffset
+               totalBytes
                messages
            updatePartitionOffsets
              conn
