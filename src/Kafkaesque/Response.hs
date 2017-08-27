@@ -49,7 +49,8 @@ type FetchResponsePartition = (PartitionHeader, [(Int64, ByteString)])
 type FetchResponseTopic = (String, [FetchResponsePartition])
 
 data KafkaResponse
-  = ProduceResponseV1 [ProduceResponseTopic]
+  = ProduceResponseV0 [ProduceResponseTopic]
+  | ProduceResponseV1 [ProduceResponseTopic]
                       Int32
   | FetchResponseV0 [FetchResponseTopic]
   | TopicMetadataResponseV0 [Broker]
@@ -99,13 +100,17 @@ putMessage (Message crc32 magicByte attrs k v) =
   putKafkaNullabeBytes k *>
   putKafkaNullabeBytes v
 
-putProduceResponse :: KafkaResponse -> Put
-putProduceResponse (ProduceResponseV1 topics throttleTime) =
+putProduceResponseTopic :: ProduceResponseTopic -> Put
+putProduceResponseTopic (name, parts) =
   let putPartition (partitionId, err, baseOffset) =
         putInt32be partitionId *> putKakfaError err *> putInt64be baseOffset
-      putTopic (name, parts) =
-        putKafkaString name *> putKafkaArray putPartition parts
-  in putKafkaArray putTopic topics *> putInt32be throttleTime
+  in putKafkaString name *> putKafkaArray putPartition parts
+
+putProduceResponse :: KafkaResponse -> Put
+putProduceResponse (ProduceResponseV0 topics) =
+  putKafkaArray putProduceResponseTopic topics
+putProduceResponse (ProduceResponseV1 topics throttleTime) =
+  putKafkaArray putProduceResponseTopic topics *> putInt32be throttleTime
 
 putTopicMetadataResponse :: KafkaResponse -> Put
 putTopicMetadataResponse (TopicMetadataResponseV0 brokers topicMetadata) =
@@ -149,6 +154,7 @@ putApiVersionsResponse (ApiVersionsResponseV0 err versions) =
   in putKakfaError err *> putKafkaArray putVersion versions
 
 writeResponse :: KafkaResponse -> ByteString
+writeResponse resp@(ProduceResponseV0 _) = runPut . putProduceResponse $ resp
 writeResponse resp@(ProduceResponseV1 _ _) = runPut . putProduceResponse $ resp
 writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
 writeResponse resp@(TopicMetadataResponseV0 _ _) =

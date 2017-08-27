@@ -150,7 +150,7 @@ fetchMessages conn topicId partitionId startOffset maxBytes = do
     _ -> return []
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
-respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
+respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts) = do
   topicResponses <-
     forM
       ts
@@ -163,8 +163,11 @@ respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
                   writeMessageSet pool topic partitionId messageSet
                 return (partitionId, err, offset))
          return (topic, partResponses))
-  let throttleTimeMs = 0 :: Int32
-  return $ ProduceResponseV1 topicResponses throttleTimeMs
+  case v of
+    0 -> return $ ProduceResponseV0 topicResponses
+    1 -> do
+      let throttleTimeMs = 0 :: Int32
+      return $ ProduceResponseV1 topicResponses throttleTimeMs
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
@@ -211,7 +214,7 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   return $ TopicMetadataResponseV0 brokers topicMetadata
 respondToRequest pool (ApiVersionsRequest (ApiVersion 0) apiKeys) =
   return $
-  ApiVersionsResponseV0 NoError [(0, 1, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
+  ApiVersionsResponseV0 NoError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
 handleRequest :: Pool.Pool PG.Connection -> ByteString -> IO ByteString
 handleRequest pool request =
