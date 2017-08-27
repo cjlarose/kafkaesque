@@ -164,7 +164,7 @@ respondToRequest pool (ProduceRequest (ApiVersion 1) acks timeout ts) = do
                 return (partitionId, err, offset))
          return (topic, partResponses))
   let throttleTimeMs = 0 :: Int32
-  return $ ProduceResponseV0 topicResponses throttleTimeMs
+  return $ ProduceResponseV1 topicResponses throttleTimeMs
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
