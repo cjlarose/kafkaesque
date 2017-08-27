@@ -126,19 +126,27 @@ fetchMessages conn topicId partitionId startOffset maxBytes = do
   let firstMessageQuery =
         [sql| SELECT byte_offset, octet_length(record)
               FROM records
-              WHERE log_offset = ? |]
+              WHERE topic_id = ?
+              AND partition_id = ?
+              AND log_offset = ? |]
   resFirstMessage <-
-    PG.query conn firstMessageQuery $ PG.Only startOffset :: IO [(Int64, Int64)]
+    PG.query conn firstMessageQuery (topicId, partitionId, startOffset) :: IO [( Int64
+                                                                               , Int64)]
   case resFirstMessage of
     [(firstByteOffset, firstMessageLength)] -> do
       let messageSetQuery =
             [sql| SELECT log_offset, record
                   FROM records
-                  WHERE byte_offset BETWEEN ? AND ?
+                  WHERE topic_id = ?
+                  AND partition_id = ?
+                  AND byte_offset BETWEEN ? AND ?
                   ORDER BY byte_offset |]
       let maxEndOffset =
             firstByteOffset + fromIntegral maxBytes - firstMessageLength
-      PG.query conn messageSetQuery (firstByteOffset, maxEndOffset)
+      PG.query
+        conn
+        messageSetQuery
+        (topicId, partitionId, firstByteOffset, maxEndOffset)
     _ -> return []
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
