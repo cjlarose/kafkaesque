@@ -41,10 +41,13 @@ runConn pool (sock, _) = do
            Nothing -> return ()
            Just msg -> do
              response <- handleRequest pool msg
-             hPut hdl .
-               runPut . putWord32be . fromIntegral . Data.ByteString.length $
-               response
-             hPut hdl response
+             case response of
+               Left err -> print err
+               Right responseBytes -> do
+                 hPut hdl .
+                   runPut . putWord32be . fromIntegral . Data.ByteString.length $
+                   responseBytes
+                 hPut hdl responseBytes
              loop)
   hClose hdl
 
