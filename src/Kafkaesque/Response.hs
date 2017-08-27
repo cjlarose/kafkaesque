@@ -130,8 +130,13 @@ putFetchResponse (FetchResponseV0 topics) =
              putInt64be offset *>
                putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
                putByteString messageBytes)
-      putPartition (header, messageSet) =
-        putPartitionHeader header *> putMessageSet messageSet
+      putPartition (header, messageSet) = do
+        let messageSetBytes = runPut $ putMessageSet messageSet
+        let messageSetLen =
+              fromIntegral $ Data.ByteString.length messageSetBytes
+        putPartitionHeader header
+        putInt32be messageSetLen
+        putByteString messageSetBytes
       putTopic (topic, partitions) =
         putKafkaString topic *> putKafkaArray putPartition partitions
   in putKafkaArray putTopic topics
