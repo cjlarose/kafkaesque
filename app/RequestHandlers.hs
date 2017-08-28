@@ -84,36 +84,16 @@ updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
   return ()
 
 writeMessageSet ::
-     Pool.Pool PG.Connection
-  -> String
-  -> Int32
-  -> MessageSet
-  -> IO (KafkaError, Int64)
-writeMessageSet pool topic partition messages =
-  Pool.withResource
-    pool
-    (\conn -> do
-       topicId <- getTopicId conn topic
-       baseOffset <-
-         PG.withTransaction conn $ do
-           (baseOffset, totalBytes) <-
-             getNextOffsetsForUpdate conn topicId partition
-           (finalOffset, finalTotalBytes) <-
-             insertMessages
-               conn
-               topicId
-               partition
-               baseOffset
-               totalBytes
-               messages
-           updatePartitionOffsets
-             conn
-             topicId
-             partition
-             finalOffset
-             finalTotalBytes
-           return baseOffset
-       return (NoError, baseOffset))
+     PG.Connection -> Int32 -> Int32 -> MessageSet -> IO (KafkaError, Int64)
+writeMessageSet conn topicId partition messages = do
+  baseOffset <-
+    PG.withTransaction conn $ do
+      (baseOffset, totalBytes) <- getNextOffsetsForUpdate conn topicId partition
+      (finalOffset, finalTotalBytes) <-
+        insertMessages conn topicId partition baseOffset totalBytes messages
+      updatePartitionOffsets conn topicId partition finalOffset finalTotalBytes
+      return baseOffset
+  return (NoError, baseOffset)
 
 getTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
 getTopicsWithPartitionCounts conn = do
@@ -170,7 +150,11 @@ respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts) = do
              parts
              (\(partitionId, messageSet) -> do
                 (err, offset) <-
-                  writeMessageSet pool topic partitionId messageSet
+                  Pool.withResource
+                    pool
+                    (\conn -> do
+                       topicId <- getTopicId conn topic
+                       writeMessageSet conn topicId partitionId messageSet)
                 return (partitionId, err, offset))
          return (topic, partResponses))
   case v of
