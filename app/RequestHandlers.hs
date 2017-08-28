@@ -96,6 +96,25 @@ writeMessageSet conn topicId partition messages = do
       return baseOffset
   return (NoError, baseOffset)
 
+getPartitionCount :: PG.Connection -> Int32 -> IO Int64
+getPartitionCount conn topicId = do
+  let query = "SELECT COUNT(*) FROM partitions WHERE topic_id = ?"
+  [PG.Only row] <- PG.query conn query (PG.Only topicId)
+  return row
+
+getTopicPartition ::
+     PG.Connection -> String -> Int32 -> IO (Maybe (Int32, Int32))
+getTopicPartition conn topicName partitionId
+  -- TODO: Prevent multiple queries for partition count during produce or fetch requests
+ = do
+  let validatePartition topicId = do
+        partitionCount <- getPartitionCount conn topicId
+        if partitionId >= 0 && fromIntegral partitionId < partitionCount
+          then return . Just $ (topicId, partitionId)
+          else return Nothing
+  topicIdRes <- getTopicId conn topicName
+  maybe (return Nothing) validatePartition topicIdRes
+
 getTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
 getTopicsWithPartitionCounts conn = do
   let query =
@@ -156,11 +175,13 @@ respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
                   Pool.withResource
                     pool
                     (\conn -> do
-                       topicId <- getTopicId conn topic
+                       topicPartitionRes <-
+                         getTopicPartition conn topic partitionId
                        maybe
                          (return (UnknownTopicOrPartition, -1 :: Int64))
-                         (\id -> writeMessageSet conn id partitionId messageSet)
-                         topicId)
+                         (\(topicId, partitionId) ->
+                            writeMessageSet conn topicId partitionId messageSet)
+                         topicPartitionRes)
                 return (partitionId, err, offset))
          return (topic, partResponses))
   case v of
@@ -184,12 +205,15 @@ respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
                 Pool.withResource
                   pool
                   (\conn -> do
-                     topicIdRes <- Pool.withResource pool (`getTopicId` topic)
+                     topicPartitionRes <-
+                       Pool.withResource
+                         pool
+                         (\conn -> getTopicPartition conn topic partitionId)
                      maybe
                        (return
                           ( (partitionId, UnknownTopicOrPartition, -1 :: Int64)
                           , []))
-                       (\topicId -> do
+                       (\(topicId, partitionId) -> do
                           messageSet <-
                             fetchMessages
                               conn
@@ -202,7 +226,7 @@ respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
                           let header =
                                 (partitionId, NoError, highwaterMarkOffset - 1)
                           return (header, messageSet))
-                       topicIdRes))
+                       topicPartitionRes))
          return (topic, partResponses))
   return . FetchResponseV0 $ topicResponses
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
