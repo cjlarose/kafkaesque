@@ -11,6 +11,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString
 import Data.ByteString.UTF8 (fromString)
 import Data.Int (Int32, Int64)
+import Data.List (foldl')
 import qualified Data.Pool as Pool
 import Data.Serialize.Put (putByteString, putWord32be, runPut)
 import qualified Database.PostgreSQL.Simple as PG
@@ -56,8 +57,8 @@ insertMessages ::
   -> IO (Int64, Int64)
 insertMessages conn topicId partitionId baseOffset totalBytes messages = do
   let (newTuples, finalOffset, finalTotalBytes) =
-        foldl
-          (\(tuples, logOffset, currentTotalBytes) (_, message) ->
+        foldl'
+          (\(f, logOffset, currentTotalBytes) (_, message) ->
              let messageBytes = runPut $ putMessage message
                  messageLen =
                    fromIntegral (Data.ByteString.length messageBytes) :: Int64
@@ -68,12 +69,12 @@ insertMessages conn topicId partitionId baseOffset totalBytes messages = do
                    , PG.Binary messageBytes
                    , logOffset
                    , endByteOffset)
-             in (tuple : tuples, logOffset + 1, endByteOffset))
-          ([], baseOffset, totalBytes)
+             in (f . (tuple :), logOffset + 1, endByteOffset))
+          (id, baseOffset, totalBytes)
           messages
   let query =
         "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
-  PG.executeMany conn query newTuples
+  PG.executeMany conn query $ newTuples []
   return (finalOffset, finalTotalBytes)
 
 updatePartitionOffsets ::
