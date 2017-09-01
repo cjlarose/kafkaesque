@@ -34,6 +34,7 @@ executable kafkaesque-exe
                      , RequestHandlers.Queries
                      , RequestHandlers.Produce
                      , RequestHandlers.Fetch
+                     , RequestHandlers.OffsetList
                      , RequestHandlers.Metadata
                      , RequestHandlers.ApiVersions
   build-depends:       base

@@ -6,6 +6,8 @@ module Kafkaesque.Response
   , KafkaResponse(..)
   , writeResponse
   , putMessage
+  , OffsetListResponseTopic
+  , OffsetListResponsePartition
   ) where
 
 import Data.ByteString (ByteString)
@@ -48,11 +50,16 @@ type FetchResponsePartition = (PartitionHeader, [(Int64, ByteString)])
 
 type FetchResponseTopic = (String, [FetchResponsePartition])
 
+type OffsetListResponsePartition = (Int32, KafkaError, Maybe [Int64])
+
+type OffsetListResponseTopic = (String, [OffsetListResponsePartition])
+
 data KafkaResponse
   = ProduceResponseV0 [ProduceResponseTopic]
   | ProduceResponseV1 [ProduceResponseTopic]
                       Int32
   | FetchResponseV0 [FetchResponseTopic]
+  | OffsetListResponseVO [OffsetListResponseTopic]
   | TopicMetadataResponseV0 [Broker]
                             [TopicMetadata]
   | ApiVersionsResponseV0 KafkaError
@@ -86,6 +93,10 @@ putKafkaNullabeBytes bs =
 putKafkaArray :: (a -> Put) -> [a] -> Put
 putKafkaArray putter xs =
   (putInt32be . fromIntegral . length $ xs) *> mapM_ putter xs
+
+putKafkaNullableArray :: (a -> Put) -> Maybe [a] -> Put
+putKafkaNullableArray _ Nothing = putInt32be (-1)
+putKafkaNullableArray putter (Just xs) = putKafkaArray putter xs
 
 kafkaErrorCode :: KafkaError -> Int16
 kafkaErrorCode NoError = 0
@@ -147,6 +158,15 @@ putFetchResponse (FetchResponseV0 topics) =
         putKafkaString topic *> putKafkaArray putPartition partitions
   in putKafkaArray putTopic topics
 
+putOffsetListResponse :: KafkaResponse -> Put
+putOffsetListResponse (OffsetListResponseVO topics) =
+  let putPartition (partitionId, err, offset) =
+        putInt32be partitionId *> putKakfaError err *>
+        putKafkaNullableArray putInt64be offset
+      putTopic (topic, partitions) =
+        putKafkaString topic *> putKafkaArray putPartition partitions
+  in putKafkaArray putTopic topics
+
 putApiVersionsResponse :: KafkaResponse -> Put
 putApiVersionsResponse (ApiVersionsResponseV0 err versions) =
   let putVersion (apiKey, minVersion, maxVersion) =
@@ -157,6 +177,7 @@ writeResponse :: KafkaResponse -> ByteString
 writeResponse resp@(ProduceResponseV0 _) = runPut . putProduceResponse $ resp
 writeResponse resp@(ProduceResponseV1 _ _) = runPut . putProduceResponse $ resp
 writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
+writeResponse resp@(OffsetListResponseVO _) = runPut . putOffsetListResponse $ resp
 writeResponse resp@(TopicMetadataResponseV0 _ _) =
   runPut . putTopicMetadataResponse $ resp
 writeResponse resp@(ApiVersionsResponseV0 _ _) =

@@ -2,6 +2,9 @@ module Kafkaesque.Request
   ( KafkaRequest(..)
   , kafkaRequest
   , ApiVersion(..)
+  , OffsetListRequestTopic
+  , OffsetListRequestPartition
+  , OffsetListRequestTimestamp(OffsetListTimestamp, LatestOffset, EarliestOffset)
   ) where
 
 import Data.Attoparsec.Binary
@@ -28,6 +31,15 @@ type FetchRequestPartition = (Int32, Int64, Int32)
 
 type FetchRequestTopic = (String, [FetchRequestPartition])
 
+data OffsetListRequestTimestamp
+  = LatestOffset
+  | EarliestOffset
+  | OffsetListTimestamp Int64
+
+type OffsetListRequestPartition = (Int32, OffsetListRequestTimestamp, Int32)
+
+type OffsetListRequestTopic = (String, [OffsetListRequestPartition])
+
 data KafkaRequest
   = ProduceRequest ApiVersion
                    Int16
@@ -38,6 +50,9 @@ data KafkaRequest
                  Int32
                  Int32
                  [FetchRequestTopic]
+  | OffsetListRequest ApiVersion
+                      Int32
+                      [OffsetListRequestTopic]
   | TopicMetadataRequest ApiVersion
                          (Maybe [String])
   | ApiVersionsRequest ApiVersion
@@ -139,6 +154,36 @@ fetchRequest (ApiVersion v)
     signedInt32be <*>
     (fromMaybe [] <$> kafkaArray fetchRequestTopic)
 
+makeTimestamp :: Int64 -> Maybe OffsetListRequestTimestamp
+makeTimestamp (-1) = Just LatestOffset
+makeTimestamp (-2) = Just EarliestOffset
+makeTimestamp t
+  | t > 0 = Just $ OffsetListTimestamp t
+  | otherwise = Nothing
+
+offsetsRequestTimestamp :: Parser OffsetListRequestTimestamp
+offsetsRequestTimestamp =
+  makeTimestamp <$> signedInt64be >>=
+  maybe (fail "Unable to parse timestamp") return
+
+offsetsRequestPartition :: Parser OffsetListRequestPartition
+offsetsRequestPartition =
+  (\partitionId ts maxNumOffsets -> (partitionId, ts, maxNumOffsets)) <$>
+  signedInt32be <*>
+  offsetsRequestTimestamp <*>
+  signedInt32be
+
+offsetsRequestTopic :: Parser OffsetListRequestTopic
+offsetsRequestTopic =
+  (\t xs -> (t, xs)) <$> kafkaString <*>
+  (fromMaybe [] <$> kafkaArray offsetsRequestPartition)
+
+offsetsRequest :: ApiVersion -> Parser KafkaRequest
+offsetsRequest (ApiVersion v)
+  | v == 0 =
+    OffsetListRequest (ApiVersion v) <$> signedInt32be <*>
+    (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
+
 requestMessageHeader :: Parser RequestMetadata
 requestMessageHeader =
   (\apiKey apiVersion correlationId clientId ->
@@ -159,6 +204,7 @@ kafkaRequest = do
         case apiKey of
           0 -> produceRequest
           1 -> fetchRequest
+          2 -> offsetsRequest
           3 -> metadataRequest
           18 -> apiVersionsRequest
           _ -> const $ fail "Unknown request type"

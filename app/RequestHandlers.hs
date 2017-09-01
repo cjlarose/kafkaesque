@@ -12,6 +12,7 @@ import Kafkaesque.Request (KafkaRequest(..), kafkaRequest)
 import Kafkaesque.Response (KafkaResponse, writeResponse)
 import qualified RequestHandlers.ApiVersions
 import qualified RequestHandlers.Fetch
+import qualified RequestHandlers.OffsetList
 import qualified RequestHandlers.Metadata
 import qualified RequestHandlers.Produce
 
@@ -20,6 +21,8 @@ respondToRequest pool req@ProduceRequest {} =
   RequestHandlers.Produce.respondToRequest pool req
 respondToRequest pool req@FetchRequest {} =
   RequestHandlers.Fetch.respondToRequest pool req
+respondToRequest pool req@OffsetListRequest {} =
+  RequestHandlers.OffsetList.respondToRequest pool req
 respondToRequest pool req@TopicMetadataRequest {} =
   RequestHandlers.Metadata.respondToRequest pool req
 respondToRequest pool req@ApiVersionsRequest {} =
