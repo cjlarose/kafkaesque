@@ -28,10 +28,11 @@ respondToRequest pool req@ApiVersionsRequest {} =
 handleRequest ::
      Pool.Pool PG.Connection -> ByteString -> Either String (IO ByteString)
 handleRequest pool request = do
-  let parseResult = parseOnly (kafkaRequest <* endOfInput) request
-      generateResponse ((_, _, correlationId, _), req) = do
-        response <- respondToRequest pool req
-        let putCorrelationId = putWord32be . fromIntegral $ correlationId
-            putResponse = putByteString . writeResponse $ response
-        return . runPut $ putCorrelationId *> putResponse
-  generateResponse <$> parseResult
+  let parseResult = parseOnly (kafkaRequest <* endOfInput)
+      putCorrelationId = putWord32be . fromIntegral
+      putResponseBody = putByteString . writeResponse
+      putFramedResponse correlationId resp =
+        putCorrelationId correlationId *> putResponseBody resp
+      generateResponse ((_, _, correlationId, _), req) =
+        (runPut . putFramedResponse correlationId) <$> respondToRequest pool req
+  generateResponse <$> parseResult request
