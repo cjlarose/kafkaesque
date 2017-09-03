@@ -1,24 +1,55 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module RequestHandlers.Fetch
-  ( respondToRequest
+module Kafkaesque.Request.Fetch
+  ( fetchRequest
   ) where
 
 import Control.Monad (forM)
 import Data.ByteString (ByteString)
-import Data.Int (Int32, Int64)
+import Data.Int (Int16, Int32, Int64)
+import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
-import Kafkaesque.Request
-       (ApiVersion(..), FetchRequestPartition, FetchRequestTopic,
-        KafkaRequest(FetchRequest))
+import Data.Attoparsec.ByteString (Parser)
+import Kafkaesque.Request.ApiVersion (ApiVersion(..))
+import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.Parsers
+       (kafkaArray, kafkaString, signedInt32be, signedInt64be)
+import Kafkaesque.Request.Queries
+       (getNextOffset, getTopicPartition)
 import Kafkaesque.Response
        (FetchResponsePartition, FetchResponseTopic,
         KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition),
         KafkaResponse(FetchResponseV0))
-import RequestHandlers.Queries (getNextOffset, getTopicPartition)
+
+type FetchRequestPartition = (Int32, Int64, Int32)
+
+type FetchRequestTopic = (String, [FetchRequestPartition])
+
+data FetchRequest =
+  FetchRequest ApiVersion
+               Int32
+               Int32
+               Int32
+               [FetchRequestTopic]
+
+fetchRequestPartition :: Parser FetchRequestPartition
+fetchRequestPartition =
+  (\a b c -> (a, b, c)) <$> signedInt32be <*> signedInt64be <*> signedInt32be
+
+fetchRequestTopic :: Parser FetchRequestTopic
+fetchRequestTopic =
+  (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
+  (fromMaybe [] <$> kafkaArray fetchRequestPartition)
+
+fetchRequest :: ApiVersion -> Parser FetchRequest
+fetchRequest (ApiVersion v)
+  | v <= 2 =
+    FetchRequest (ApiVersion v) <$> signedInt32be <*> signedInt32be <*>
+    signedInt32be <*>
+    (fromMaybe [] <$> kafkaArray fetchRequestTopic)
 
 fetchMessages ::
      PG.Connection
@@ -80,9 +111,12 @@ fetchTopic conn (topicName, parts) = do
   partResponses <- forM parts (fetchTopicPartition conn topicName)
   return (topicName, partResponses)
 
-respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
+respondToRequest :: Pool.Pool PG.Connection -> FetchRequest -> IO KafkaResponse
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
  = FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic)
+
+instance KafkaRequest FetchRequest where
+  respond = respondToRequest

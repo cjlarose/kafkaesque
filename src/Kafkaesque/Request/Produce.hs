@@ -1,25 +1,75 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module RequestHandlers.Produce
-  ( respondToRequest
+module Kafkaesque.Request.Produce
+  ( produceRequest
   ) where
 
 import Control.Monad (forM)
+import Data.Attoparsec.Binary (anyWord32be)
+import Data.Attoparsec.ByteString
+       (Parser, anyWord8, many', parseOnly, take)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString (length)
-import Data.Int (Int32, Int64)
+import Data.Int (Int16, Int32, Int64)
 import Data.List (foldl')
+import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import Data.Serialize.Put (runPut)
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Message (Message, MessageSet)
-import Kafkaesque.Request
-       (ApiVersion(..), KafkaRequest(ProduceRequest))
+import Kafkaesque.Message (Message(..), MessageSet)
+import Kafkaesque.Request.ApiVersion (ApiVersion(..))
+import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.Parsers
+       (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
+        signedInt32be, signedInt64be)
+import Kafkaesque.Request.Queries (getTopicPartition)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         KafkaResponse(ProduceResponseV0, ProduceResponseV1), putMessage)
-import RequestHandlers.Queries (getTopicPartition)
+
+newtype TimeoutMs =
+  TimeoutMs Int32
+
+type PartitionData = (Int32, MessageSet)
+
+type TopicData = (String, [PartitionData])
+
+data ProduceRequest =
+  ProduceRequest ApiVersion
+                 Int16
+                 TimeoutMs
+                 [TopicData]
+
+produceRequest :: ApiVersion -> Parser ProduceRequest
+produceRequest (ApiVersion v)
+  | v <= 2 =
+    let message :: Parser Message
+        message =
+          Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*>
+          kafkaNullabeBytes <*>
+          kafkaNullabeBytes
+        mesasgeSetElement :: Parser (Int64, Message)
+        mesasgeSetElement =
+          (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> message
+        records :: Parser MessageSet
+        records = do
+          messageSetSize <- signedInt32be
+          bs <- Data.Attoparsec.ByteString.take . fromIntegral $ messageSetSize
+          case parseOnly (many' mesasgeSetElement) bs of
+            Left err -> fail err
+            Right xs -> return xs
+        partitionData :: Parser PartitionData
+        partitionData =
+          (\partitionId msgs -> (partitionId, msgs)) <$> signedInt32be <*>
+          records
+        topicData :: Parser TopicData
+        topicData =
+          (\name parts -> (name, parts)) <$> kafkaString <*>
+          (fromMaybe [] <$> kafkaArray partitionData)
+    in ProduceRequest (ApiVersion v) <$> signedInt16be <*>
+       (TimeoutMs <$> signedInt32be) <*>
+       (fromMaybe [] <$> kafkaArray topicData)
 
 getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
 getNextOffsetsForUpdate conn topicId partitionId = do
@@ -78,7 +128,8 @@ writeMessageSet conn topicId partition messages = do
       return baseOffset
   return (NoError, baseOffset)
 
-respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
+respondToRequest ::
+     Pool.Pool PG.Connection -> ProduceRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
   -- TODO: Fetch topicIds in bulk
  = do
@@ -108,3 +159,6 @@ respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
     1 -> do
       let throttleTimeMs = 0 :: Int32
       return $ ProduceResponseV1 topicResponses throttleTimeMs
+
+instance KafkaRequest ProduceRequest where
+  respond = respondToRequest
