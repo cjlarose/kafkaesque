@@ -6,7 +6,8 @@ module Kafkaesque.Request
   , FetchRequestPartition
   , OffsetListRequestTopic
   , OffsetListRequestPartition
-  , OffsetListRequestTimestamp(OffsetListTimestamp, LatestOffset, EarliestOffset)
+  , OffsetListRequestTimestamp(OffsetListTimestamp, LatestOffset,
+                           EarliestOffset)
   ) where
 
 import Data.Attoparsec.Binary

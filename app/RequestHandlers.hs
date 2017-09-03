@@ -12,8 +12,8 @@ import Kafkaesque.Request (KafkaRequest(..), kafkaRequest)
 import Kafkaesque.Response (KafkaResponse, writeResponse)
 import qualified RequestHandlers.ApiVersions
 import qualified RequestHandlers.Fetch
-import qualified RequestHandlers.OffsetList
 import qualified RequestHandlers.Metadata
+import qualified RequestHandlers.OffsetList
 import qualified RequestHandlers.Produce
 
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse

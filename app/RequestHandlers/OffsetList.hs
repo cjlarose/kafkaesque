@@ -12,22 +12,31 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Kafkaesque.Request
        (ApiVersion(..), KafkaRequest(OffsetListRequest),
-        OffsetListRequestPartition, OffsetListRequestTopic, OffsetListRequestTimestamp(LatestOffset, EarliestOffset))
+        OffsetListRequestPartition,
+        OffsetListRequestTimestamp(EarliestOffset, LatestOffset),
+        OffsetListRequestTopic)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         KafkaResponse(OffsetListResponseVO), OffsetListResponsePartition,
         OffsetListResponseTopic)
-import RequestHandlers.Queries (getTopicPartition, getNextOffset, getEarliestOffset)
+import RequestHandlers.Queries
+       (getEarliestOffset, getNextOffset, getTopicPartition)
 
 fetchTopicPartitionOffsets ::
-     PG.Connection -> Int32 -> Int32 -> OffsetListRequestTimestamp -> Int32 -> IO [Int64]
+     PG.Connection
+  -> Int32
+  -> Int32
+  -> OffsetListRequestTimestamp
+  -> Int32
+  -> IO [Int64]
 fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets = do
   earliest <- getEarliestOffset conn topicId partitionId
   latest <- getNextOffset conn topicId partitionId
   -- TODO handle actual timestamp offsets
-  let offsets = case timestamp of
-                  LatestOffset -> [Just latest, earliest]
-                  EarliestOffset -> [earliest]
+  let offsets =
+        case timestamp of
+          LatestOffset -> [Just latest, earliest]
+          EarliestOffset -> [earliest]
   return . take (fromIntegral maxOffsets) . catMaybes $ offsets
 
 fetchPartitionOffsets ::
@@ -44,7 +53,8 @@ fetchPartitionOffsets conn topicName (partitionId, timestamp, maxOffsets) = do
         fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets
       return (partitionId, NoError, Just offsets)
 
-fetchTopicOffsets :: PG.Connection -> OffsetListRequestTopic -> IO OffsetListResponseTopic
+fetchTopicOffsets ::
+     PG.Connection -> OffsetListRequestTopic -> IO OffsetListResponseTopic
 fetchTopicOffsets conn (topicName, partitions) = do
   partitionResponses <- mapM (fetchPartitionOffsets conn topicName) partitions
   return (topicName, partitionResponses)

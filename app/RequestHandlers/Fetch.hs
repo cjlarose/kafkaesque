@@ -18,7 +18,7 @@ import Kafkaesque.Response
        (FetchResponsePartition, FetchResponseTopic,
         KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition),
         KafkaResponse(FetchResponseV0))
-import RequestHandlers.Queries (getTopicPartition, getNextOffset)
+import RequestHandlers.Queries (getNextOffset, getTopicPartition)
 
 fetchMessages ::
      PG.Connection
@@ -66,12 +66,13 @@ fetchTopicPartition conn topicName (partitionId, offset, maxBytes) = do
     (\(topicId, partitionId) -> do
        nextOffset <- getNextOffset conn topicId partitionId
        highwaterMarkOffset <- getNextOffset conn topicId partitionId
-       if offset >= nextOffset then
-         return ((partitionId, OffsetOutOfRange, highwaterMarkOffset - 1), [])
-       else do
-         messageSet <- fetchMessages conn topicId partitionId offset maxBytes
-         let header = (partitionId, NoError, highwaterMarkOffset - 1)
-         return (header, messageSet))
+       if offset >= nextOffset
+         then return
+                ((partitionId, OffsetOutOfRange, highwaterMarkOffset - 1), [])
+         else do
+           messageSet <- fetchMessages conn topicId partitionId offset maxBytes
+           let header = (partitionId, NoError, highwaterMarkOffset - 1)
+           return (header, messageSet))
     topicPartitionRes
 
 fetchTopic :: PG.Connection -> FetchRequestTopic -> IO FetchResponseTopic

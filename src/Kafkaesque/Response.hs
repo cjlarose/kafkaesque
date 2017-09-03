@@ -181,7 +181,8 @@ writeResponse :: KafkaResponse -> ByteString
 writeResponse resp@(ProduceResponseV0 _) = runPut . putProduceResponse $ resp
 writeResponse resp@(ProduceResponseV1 _ _) = runPut . putProduceResponse $ resp
 writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
-writeResponse resp@(OffsetListResponseVO _) = runPut . putOffsetListResponse $ resp
+writeResponse resp@(OffsetListResponseVO _) =
+  runPut . putOffsetListResponse $ resp
 writeResponse resp@(TopicMetadataResponseV0 _ _) =
   runPut . putTopicMetadataResponse $ resp
 writeResponse resp@(ApiVersionsResponseV0 _ _) =

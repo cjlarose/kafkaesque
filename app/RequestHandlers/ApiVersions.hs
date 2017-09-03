@@ -2,8 +2,8 @@ module RequestHandlers.ApiVersions
   ( respondToRequest
   ) where
 
-import qualified Database.PostgreSQL.Simple as PG
 import qualified Data.Pool as Pool
+import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Request
        (ApiVersion(..), KafkaRequest(ApiVersionsRequest))
