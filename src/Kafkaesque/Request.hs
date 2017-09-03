@@ -12,25 +12,29 @@ import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 
 import Kafkaesque.Message (Message(..), MessageSet)
-import Kafkaesque.Request.ApiVersions (apiVersionsRequest)
-import Kafkaesque.Request.Fetch (fetchRequest)
+import Kafkaesque.Request.ApiVersion (ApiVersion(..))
+import Kafkaesque.Request.ApiVersions (apiVersionsRequestV0)
+import Kafkaesque.Request.Fetch (fetchRequestV0)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaRequestBox(..))
-import Kafkaesque.Request.OffsetList (offsetsRequest)
+import Kafkaesque.Request.OffsetList (offsetsRequestV0)
 import Kafkaesque.Request.Parsers
        (RequestMetadata, requestMessageHeader)
-import Kafkaesque.Request.Produce (produceRequest)
-import Kafkaesque.Request.TopicMetadata (metadataRequest)
+import Kafkaesque.Request.Produce
+       (produceRequestV0, produceRequestV1)
+import Kafkaesque.Request.TopicMetadata (metadataRequestV0)
 
 kafkaRequest :: Parser (RequestMetadata, KafkaRequestBox)
 kafkaRequest = do
-  metadata@(apiKey, apiVersion, correlationId, clientId) <- requestMessageHeader
+  metadata@(apiKey, apiVersion@(ApiVersion v), correlationId, clientId) <-
+    requestMessageHeader
   let requestParser =
-        case apiKey of
-          0 -> KR <$> produceRequest apiVersion
-          1 -> KR <$> fetchRequest apiVersion
-          2 -> KR <$> offsetsRequest apiVersion
-          3 -> KR <$> metadataRequest apiVersion
-          18 -> KR <$> apiVersionsRequest apiVersion
+        case (apiKey, v) of
+          (0, 0) -> KR <$> produceRequestV0
+          (0, 1) -> KR <$> produceRequestV1
+          (1, 0) -> KR <$> fetchRequestV0
+          (2, 0) -> KR <$> offsetsRequestV0
+          (3, 0) -> KR <$> metadataRequestV0
+          (18, 0) -> KR <$> apiVersionsRequestV0
           _ -> fail "Unknown request type"
   (\r -> (metadata, r)) <$> requestParser

@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Kafkaesque.Request.Produce
-  ( produceRequest
+  ( produceRequestV0
+  , produceRequestV1
   ) where
 
 import Control.Monad (forM)
@@ -27,7 +28,8 @@ import Kafkaesque.Request.Parsers
 import Kafkaesque.Request.Queries (getTopicPartition)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
-        ProduceResponseV0(..), ProduceResponseV1(..), putMessage)
+        ProduceResponseTopic, ProduceResponseV0(..), ProduceResponseV1(..),
+        putMessage)
 
 newtype TimeoutMs =
   TimeoutMs Int32
@@ -36,41 +38,51 @@ type PartitionData = (Int32, MessageSet)
 
 type TopicData = (String, [PartitionData])
 
-data ProduceRequest =
-  ProduceRequest ApiVersion
-                 Int16
-                 TimeoutMs
-                 [TopicData]
+data ProduceRequestV0 =
+  ProduceRequestV0 Int16
+                   TimeoutMs
+                   [TopicData]
 
-produceRequest :: ApiVersion -> Parser ProduceRequest
-produceRequest (ApiVersion v)
-  | v <= 2 =
-    let message :: Parser Message
-        message =
-          Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*>
-          kafkaNullabeBytes <*>
-          kafkaNullabeBytes
-        mesasgeSetElement :: Parser (Int64, Message)
-        mesasgeSetElement =
-          (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> message
-        records :: Parser MessageSet
-        records = do
-          messageSetSize <- signedInt32be
-          bs <- Data.Attoparsec.ByteString.take . fromIntegral $ messageSetSize
-          case parseOnly (many' mesasgeSetElement) bs of
-            Left err -> fail err
-            Right xs -> return xs
-        partitionData :: Parser PartitionData
-        partitionData =
-          (\partitionId msgs -> (partitionId, msgs)) <$> signedInt32be <*>
-          records
-        topicData :: Parser TopicData
-        topicData =
-          (\name parts -> (name, parts)) <$> kafkaString <*>
-          (fromMaybe [] <$> kafkaArray partitionData)
-    in ProduceRequest (ApiVersion v) <$> signedInt16be <*>
-       (TimeoutMs <$> signedInt32be) <*>
-       (fromMaybe [] <$> kafkaArray topicData)
+data ProduceRequestV1 =
+  ProduceRequestV1 Int16
+                   TimeoutMs
+                   [TopicData]
+
+produceRequest :: Parser (Int16, TimeoutMs, [TopicData])
+produceRequest =
+  let message :: Parser Message
+      message =
+        Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*> kafkaNullabeBytes <*>
+        kafkaNullabeBytes
+      mesasgeSetElement :: Parser (Int64, Message)
+      mesasgeSetElement =
+        (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> message
+      records :: Parser MessageSet
+      records = do
+        messageSetSize <- signedInt32be
+        bs <- Data.Attoparsec.ByteString.take . fromIntegral $ messageSetSize
+        case parseOnly (many' mesasgeSetElement) bs of
+          Left err -> fail err
+          Right xs -> return xs
+      partitionData :: Parser PartitionData
+      partitionData =
+        (\partitionId msgs -> (partitionId, msgs)) <$> signedInt32be <*> records
+      topicData :: Parser TopicData
+      topicData =
+        (\name parts -> (name, parts)) <$> kafkaString <*>
+        (fromMaybe [] <$> kafkaArray partitionData)
+  in (\a b c -> (a, b, c)) <$> signedInt16be <*> (TimeoutMs <$> signedInt32be) <*>
+     (fromMaybe [] <$> kafkaArray topicData)
+
+produceRequestV0 :: Parser ProduceRequestV0
+produceRequestV0 =
+  (\(acks, timeout, topics) -> ProduceRequestV0 acks timeout topics) <$>
+  produceRequest
+
+produceRequestV1 :: Parser ProduceRequestV1
+produceRequestV1 =
+  (\(acks, timeout, topics) -> ProduceRequestV1 acks timeout topics) <$>
+  produceRequest
 
 getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
 getNextOffsetsForUpdate conn topicId partitionId = do
@@ -130,36 +142,37 @@ writeMessageSet conn topicId partition messages = do
   return (NoError, baseOffset)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> ProduceRequest -> IO KafkaResponseBox
-respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
+     Pool.Pool PG.Connection -> [TopicData] -> IO [ProduceResponseTopic]
+respondToRequest pool
   -- TODO: Fetch topicIds in bulk
- = do
-  topicResponses <-
-    forM
-      ts
-      (\(topic, parts) -> do
-         partResponses <-
-           forM
-             parts
-             (\(partitionId, messageSet) -> do
-                (err, offset) <-
-                  Pool.withResource
-                    pool
-                    (\conn -> do
-                       topicPartitionRes <-
-                         getTopicPartition conn topic partitionId
-                       maybe
-                         (return (UnknownTopicOrPartition, -1 :: Int64))
-                         (\(topicId, partitionId) ->
-                            writeMessageSet conn topicId partitionId messageSet)
-                         topicPartitionRes)
-                return (partitionId, err, offset))
-         return (topic, partResponses))
-  case v of
-    0 -> return . KResp $ ProduceResponseV0 topicResponses
-    1 -> do
-      let throttleTimeMs = 0 :: Int32
-      return . KResp $ ProduceResponseV1 topicResponses throttleTimeMs
+ =
+  mapM
+    (\(topic, parts) -> do
+       partResponses <-
+         forM
+           parts
+           (\(partitionId, messageSet) -> do
+              (err, offset) <-
+                Pool.withResource
+                  pool
+                  (\conn -> do
+                     topicPartitionRes <-
+                       getTopicPartition conn topic partitionId
+                     maybe
+                       (return (UnknownTopicOrPartition, -1 :: Int64))
+                       (\(topicId, partitionId) ->
+                          writeMessageSet conn topicId partitionId messageSet)
+                       topicPartitionRes)
+              return (partitionId, err, offset))
+       return (topic, partResponses))
 
-instance KafkaRequest ProduceRequest where
-  respond = respondToRequest
+instance KafkaRequest ProduceRequestV0 where
+  respond pool (ProduceRequestV0 _ _ topics) = do
+    topicResponses <- respondToRequest pool topics
+    return . KResp $ ProduceResponseV0 topicResponses
+
+instance KafkaRequest ProduceRequestV1 where
+  respond pool (ProduceRequestV1 _ _ topics) = do
+    topicResponses <- respondToRequest pool topics
+    let throttleTimeMs = 0 :: Int32
+    return . KResp $ ProduceResponseV1 topicResponses throttleTimeMs

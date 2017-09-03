@@ -11,6 +11,7 @@ module Kafkaesque.Response
   , OffsetListResponseV0(..)
   , TopicMetadataResponseV0(..)
   , ApiVersionsResponseV0(..)
+  , ProduceResponseTopic
   , FetchResponseTopic
   , FetchResponsePartition
   , OffsetListResponseTopic

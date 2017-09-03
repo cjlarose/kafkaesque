@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Kafkaesque.Request.Fetch
-  ( fetchRequest
+  ( fetchRequestV0
   ) where
 
 import Control.Monad (forM)
@@ -28,12 +28,11 @@ type FetchRequestPartition = (Int32, Int64, Int32)
 
 type FetchRequestTopic = (String, [FetchRequestPartition])
 
-data FetchRequest =
-  FetchRequest ApiVersion
-               Int32
-               Int32
-               Int32
-               [FetchRequestTopic]
+data FetchRequestV0 =
+  FetchRequestV0 Int32
+                 Int32
+                 Int32
+                 [FetchRequestTopic]
 
 fetchRequestPartition :: Parser FetchRequestPartition
 fetchRequestPartition =
@@ -44,12 +43,10 @@ fetchRequestTopic =
   (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray fetchRequestPartition)
 
-fetchRequest :: ApiVersion -> Parser FetchRequest
-fetchRequest (ApiVersion v)
-  | v <= 2 =
-    FetchRequest (ApiVersion v) <$> signedInt32be <*> signedInt32be <*>
-    signedInt32be <*>
-    (fromMaybe [] <$> kafkaArray fetchRequestTopic)
+fetchRequestV0 :: Parser FetchRequestV0
+fetchRequestV0 =
+  FetchRequestV0 <$> signedInt32be <*> signedInt32be <*> signedInt32be <*>
+  (fromMaybe [] <$> kafkaArray fetchRequestTopic)
 
 fetchMessages ::
      PG.Connection
@@ -112,12 +109,12 @@ fetchTopic conn (topicName, parts) = do
   return (topicName, partResponses)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> FetchRequest -> IO KafkaResponseBox
-respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
+     Pool.Pool PG.Connection -> FetchRequestV0 -> IO KafkaResponseBox
+respondToRequest pool (FetchRequestV0 _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
  = KResp <$> (FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic))
 
-instance KafkaRequest FetchRequest where
+instance KafkaRequest FetchRequestV0 where
   respond = respondToRequest

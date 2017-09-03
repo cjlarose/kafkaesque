@@ -1,5 +1,5 @@
 module Kafkaesque.Request.OffsetList
-  ( offsetsRequest
+  ( offsetsRequestV0
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
@@ -29,10 +29,9 @@ type OffsetListRequestPartition = (Int32, OffsetListRequestTimestamp, Int32)
 
 type OffsetListRequestTopic = (String, [OffsetListRequestPartition])
 
-data OffsetListRequest =
-  OffsetListRequest ApiVersion
-                    Int32
-                    [OffsetListRequestTopic]
+data OffsetListRequestV0 =
+  OffsetListRequestV0 Int32
+                      [OffsetListRequestTopic]
 
 makeTimestamp :: Int64 -> Maybe OffsetListRequestTimestamp
 makeTimestamp (-1) = Just LatestOffset
@@ -58,11 +57,10 @@ offsetsRequestTopic =
   (\t xs -> (t, xs)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestPartition)
 
-offsetsRequest :: ApiVersion -> Parser OffsetListRequest
-offsetsRequest (ApiVersion v)
-  | v == 0 =
-    OffsetListRequest (ApiVersion v) <$> signedInt32be <*>
-    (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
+offsetsRequestV0 :: Parser OffsetListRequestV0
+offsetsRequestV0 =
+  OffsetListRequestV0 <$> signedInt32be <*>
+  (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
 
 fetchTopicPartitionOffsets ::
      PG.Connection
@@ -102,11 +100,11 @@ fetchTopicOffsets conn (topicName, partitions) = do
   return (topicName, partitionResponses)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> OffsetListRequest -> IO KafkaResponseBox
-respondToRequest pool (OffsetListRequest (ApiVersion 0) _ topics) = do
+     Pool.Pool PG.Connection -> OffsetListRequestV0 -> IO KafkaResponseBox
+respondToRequest pool (OffsetListRequestV0 _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
   return . KResp $ OffsetListResponseV0 topicResponses
 
-instance KafkaRequest OffsetListRequest where
+instance KafkaRequest OffsetListRequestV0 where
   respond = respondToRequest

@@ -1,5 +1,5 @@
 module Kafkaesque.Request.ApiVersions
-  ( apiVersionsRequest
+  ( apiVersionsRequestV0
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
@@ -14,19 +14,17 @@ import Kafkaesque.Request.Parsers (kafkaArray, signedInt16be)
 import Kafkaesque.Response
        (ApiVersionsResponseV0(..), KafkaError(NoError))
 
-data ApiVersionsRequest =
-  ApiVersionsRequest ApiVersion
-                     (Maybe [Int16])
+newtype ApiVersionsRequestV0 =
+  ApiVersionsRequestV0 (Maybe [Int16])
 
-apiVersionsRequest :: ApiVersion -> Parser ApiVersionsRequest
-apiVersionsRequest (ApiVersion v)
-  | v <= 1 = ApiVersionsRequest (ApiVersion v) <$> kafkaArray signedInt16be
+apiVersionsRequestV0 :: Parser ApiVersionsRequestV0
+apiVersionsRequestV0 = ApiVersionsRequestV0 <$> kafkaArray signedInt16be
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> ApiVersionsRequest -> IO KafkaResponseBox
-respondToRequest pool (ApiVersionsRequest (ApiVersion 0) apiKeys) =
+     Pool.Pool PG.Connection -> ApiVersionsRequestV0 -> IO KafkaResponseBox
+respondToRequest pool (ApiVersionsRequestV0 apiKeys) =
   return . KResp $
   ApiVersionsResponseV0 NoError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
-instance KafkaRequest ApiVersionsRequest where
+instance KafkaRequest ApiVersionsRequestV0 where
   respond = respondToRequest

@@ -1,5 +1,5 @@
 module Kafkaesque.Request.TopicMetadata
-  ( metadataRequest
+  ( metadataRequestV0
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
@@ -15,17 +15,15 @@ import Kafkaesque.Response
        (Broker(..), KafkaError(NoError), PartitionMetadata(..),
         TopicMetadata(..), TopicMetadataResponseV0(..))
 
-data TopicMetadataRequest =
-  TopicMetadataRequest ApiVersion
-                       (Maybe [String])
+newtype TopicMetadataRequestV0 =
+  TopicMetadataRequestV0 (Maybe [String])
 
-metadataRequest :: ApiVersion -> Parser TopicMetadataRequest
-metadataRequest (ApiVersion v)
-  | v <= 3 = TopicMetadataRequest (ApiVersion v) <$> kafkaArray kafkaString
+metadataRequestV0 :: Parser TopicMetadataRequestV0
+metadataRequestV0 = TopicMetadataRequestV0 <$> kafkaArray kafkaString
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> TopicMetadataRequest -> IO KafkaResponseBox
-respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
+     Pool.Pool PG.Connection -> TopicMetadataRequestV0 -> IO KafkaResponseBox
+respondToRequest pool (TopicMetadataRequestV0 ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]
   let makePartitionMetadata partitionId =
@@ -44,5 +42,5 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   let topicMetadata = map makeTopicMetadata topics
   return . KResp $ TopicMetadataResponseV0 brokers topicMetadata
 
-instance KafkaRequest TopicMetadataRequest where
+instance KafkaRequest TopicMetadataRequestV0 where
   respond = respondToRequest
