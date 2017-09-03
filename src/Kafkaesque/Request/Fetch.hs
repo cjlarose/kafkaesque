@@ -14,15 +14,15 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Data.Attoparsec.ByteString (Parser)
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
-import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.KafkaRequest
+       (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Request.Queries
        (getNextOffset, getTopicPartition)
 import Kafkaesque.Response
-       (FetchResponsePartition, FetchResponseTopic,
-        KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition),
-        KafkaResponse(FetchResponseV0))
+       (FetchResponsePartition, FetchResponseTopic, FetchResponseV0(..),
+        KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition))
 
 type FetchRequestPartition = (Int32, Int64, Int32)
 
@@ -111,12 +111,13 @@ fetchTopic conn (topicName, parts) = do
   partResponses <- forM parts (fetchTopicPartition conn topicName)
   return (topicName, partResponses)
 
-respondToRequest :: Pool.Pool PG.Connection -> FetchRequest -> IO KafkaResponse
+respondToRequest ::
+     Pool.Pool PG.Connection -> FetchRequest -> IO KafkaResponseBox
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
- = FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic)
+ = KResp <$> (FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic))
 
 instance KafkaRequest FetchRequest where
   respond = respondToRequest

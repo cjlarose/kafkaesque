@@ -9,15 +9,16 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
-import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.KafkaRequest
+       (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Request.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
-        KafkaResponse(OffsetListResponseVO), OffsetListResponsePartition,
-        OffsetListResponseTopic)
+        OffsetListResponsePartition, OffsetListResponseTopic,
+        OffsetListResponseVO(..))
 
 data OffsetListRequestTimestamp
   = LatestOffset
@@ -101,11 +102,11 @@ fetchTopicOffsets conn (topicName, partitions) = do
   return (topicName, partitionResponses)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> OffsetListRequest -> IO KafkaResponse
+     Pool.Pool PG.Connection -> OffsetListRequest -> IO KafkaResponseBox
 respondToRequest pool (OffsetListRequest (ApiVersion 0) _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
-  return $ OffsetListResponseVO topicResponses
+  return . KResp $ OffsetListResponseVO topicResponses
 
 instance KafkaRequest OffsetListRequest where
   respond = respondToRequest

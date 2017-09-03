@@ -7,13 +7,13 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
-import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.KafkaRequest
+       (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Request.Queries (getTopicsWithPartitionCounts)
 import Kafkaesque.Response
-       (Broker(..), KafkaError(NoError),
-        KafkaResponse(TopicMetadataResponseV0), PartitionMetadata(..),
-        TopicMetadata(..))
+       (Broker(..), KafkaError(NoError), PartitionMetadata(..),
+        TopicMetadata(..), TopicMetadataResponseV0(..))
 
 data TopicMetadataRequest =
   TopicMetadataRequest ApiVersion
@@ -24,7 +24,7 @@ metadataRequest (ApiVersion v)
   | v <= 3 = TopicMetadataRequest (ApiVersion v) <$> kafkaArray kafkaString
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> TopicMetadataRequest -> IO KafkaResponse
+     Pool.Pool PG.Connection -> TopicMetadataRequest -> IO KafkaResponseBox
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]
@@ -42,7 +42,7 @@ respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
           (map makePartitionMetadata [0 .. (partitionCount - 1)])
   topics <- Pool.withResource pool getTopicsWithPartitionCounts
   let topicMetadata = map makeTopicMetadata topics
-  return $ TopicMetadataResponseV0 brokers topicMetadata
+  return . KResp $ TopicMetadataResponseV0 brokers topicMetadata
 
 instance KafkaRequest TopicMetadataRequest where
   respond = respondToRequest

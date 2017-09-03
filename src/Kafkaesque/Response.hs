@@ -3,9 +3,14 @@ module Kafkaesque.Response
   , KafkaError(..)
   , PartitionMetadata(..)
   , TopicMetadata(..)
-  , KafkaResponse(..)
   , writeResponse
   , putMessage
+  , ProduceResponseV0(..)
+  , ProduceResponseV1(..)
+  , FetchResponseV0(..)
+  , OffsetListResponseVO(..)
+  , TopicMetadataResponseV0(..)
+  , ApiVersionsResponseV0(..)
   , FetchResponseTopic
   , FetchResponsePartition
   , OffsetListResponseTopic
@@ -20,6 +25,8 @@ import Data.Serialize.Put
        (Put, putByteString, putWord16be, putWord32be, putWord64be,
         putWord8, runPut)
 import Kafkaesque.Message (Message(..), MessageSet)
+import Kafkaesque.Request.KafkaRequest
+       (KafkaResponse, KafkaResponseBox(..), put)
 
 data Broker =
   Broker Int32
@@ -57,16 +64,26 @@ type OffsetListResponsePartition = (Int32, KafkaError, Maybe [Int64])
 
 type OffsetListResponseTopic = (String, [OffsetListResponsePartition])
 
-data KafkaResponse
-  = ProduceResponseV0 [ProduceResponseTopic]
-  | ProduceResponseV1 [ProduceResponseTopic]
-                      Int32
-  | FetchResponseV0 [FetchResponseTopic]
-  | OffsetListResponseVO [OffsetListResponseTopic]
-  | TopicMetadataResponseV0 [Broker]
-                            [TopicMetadata]
-  | ApiVersionsResponseV0 KafkaError
-                          [(Int16, Int16, Int16)]
+newtype ProduceResponseV0 =
+  ProduceResponseV0 [ProduceResponseTopic]
+
+data ProduceResponseV1 =
+  ProduceResponseV1 [ProduceResponseTopic]
+                    Int32
+
+newtype FetchResponseV0 =
+  FetchResponseV0 [FetchResponseTopic]
+
+newtype OffsetListResponseVO =
+  OffsetListResponseVO [OffsetListResponseTopic]
+
+data TopicMetadataResponseV0 =
+  TopicMetadataResponseV0 [Broker]
+                          [TopicMetadata]
+
+data ApiVersionsResponseV0 =
+  ApiVersionsResponseV0 KafkaError
+                        [(Int16, Int16, Int16)]
 
 putInt16be :: Int16 -> Put
 putInt16be = putWord16be . fromIntegral
@@ -121,69 +138,63 @@ putProduceResponseTopic (name, parts) =
         putInt32be partitionId *> putKakfaError err *> putInt64be baseOffset
   in putKafkaString name *> putKafkaArray putPartition parts
 
-putProduceResponse :: KafkaResponse -> Put
-putProduceResponse (ProduceResponseV0 topics) =
-  putKafkaArray putProduceResponseTopic topics
-putProduceResponse (ProduceResponseV1 topics throttleTime) =
-  putKafkaArray putProduceResponseTopic topics *> putInt32be throttleTime
+instance KafkaResponse ProduceResponseV0 where
+  put (ProduceResponseV0 topics) = putKafkaArray putProduceResponseTopic topics
 
-putTopicMetadataResponse :: KafkaResponse -> Put
-putTopicMetadataResponse (TopicMetadataResponseV0 brokers topicMetadata) =
-  let putBroker (Broker nodeId host port) =
-        putInt32be nodeId *> putKafkaString host *> putInt32be port
-      putPartitionMetadata (PartitionMetadata err partitionId leader replicas isr) =
-        putKakfaError err *> putInt32be partitionId *> putInt32be leader *>
-        putKafkaArray putInt32be replicas *>
-        putKafkaArray putInt32be isr
-      putTopicMetadata (TopicMetadata err name partitionMetadata) =
-        putKakfaError err *> putKafkaString name *>
-        putKafkaArray putPartitionMetadata partitionMetadata
-  in putKafkaArray putBroker brokers *>
-     putKafkaArray putTopicMetadata topicMetadata
+instance KafkaResponse ProduceResponseV1 where
+  put (ProduceResponseV1 topics throttleTime) =
+    putKafkaArray putProduceResponseTopic topics *> putInt32be throttleTime
 
-putFetchResponse :: KafkaResponse -> Put
-putFetchResponse (FetchResponseV0 topics) =
-  let putPartitionHeader (partitionId, err, highWatermark) =
-        putInt32be partitionId *> putKakfaError err *> putInt64be highWatermark
-      putMessageSet =
-        mapM_
-          (\(offset, messageBytes) ->
-             putInt64be offset *>
-             putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
-             putByteString messageBytes)
-      putPartition (header, messageSet) = do
-        let messageSetBytes = runPut $ putMessageSet messageSet
-        let messageSetLen =
-              fromIntegral $ Data.ByteString.length messageSetBytes
-        putPartitionHeader header
-        putInt32be messageSetLen
-        putByteString messageSetBytes
-      putTopic (topic, partitions) =
-        putKafkaString topic *> putKafkaArray putPartition partitions
-  in putKafkaArray putTopic topics
+instance KafkaResponse TopicMetadataResponseV0 where
+  put (TopicMetadataResponseV0 brokers topicMetadata) =
+    let putBroker (Broker nodeId host port) =
+          putInt32be nodeId *> putKafkaString host *> putInt32be port
+        putPartitionMetadata (PartitionMetadata err partitionId leader replicas isr) =
+          putKakfaError err *> putInt32be partitionId *> putInt32be leader *>
+          putKafkaArray putInt32be replicas *>
+          putKafkaArray putInt32be isr
+        putTopicMetadata (TopicMetadata err name partitionMetadata) =
+          putKakfaError err *> putKafkaString name *>
+          putKafkaArray putPartitionMetadata partitionMetadata
+    in putKafkaArray putBroker brokers *>
+       putKafkaArray putTopicMetadata topicMetadata
 
-putOffsetListResponse :: KafkaResponse -> Put
-putOffsetListResponse (OffsetListResponseVO topics) =
-  let putPartition (partitionId, err, offset) =
-        putInt32be partitionId *> putKakfaError err *>
-        putKafkaNullableArray putInt64be offset
-      putTopic (topic, partitions) =
-        putKafkaString topic *> putKafkaArray putPartition partitions
-  in putKafkaArray putTopic topics
+instance KafkaResponse FetchResponseV0 where
+  put (FetchResponseV0 topics) =
+    let putPartitionHeader (partitionId, err, highWatermark) =
+          putInt32be partitionId *> putKakfaError err *>
+          putInt64be highWatermark
+        putMessageSet =
+          mapM_
+            (\(offset, messageBytes) ->
+               putInt64be offset *>
+               putInt32be (fromIntegral . Data.ByteString.length $ messageBytes) *>
+               putByteString messageBytes)
+        putPartition (header, messageSet) = do
+          let messageSetBytes = runPut $ putMessageSet messageSet
+          let messageSetLen =
+                fromIntegral $ Data.ByteString.length messageSetBytes
+          putPartitionHeader header
+          putInt32be messageSetLen
+          putByteString messageSetBytes
+        putTopic (topic, partitions) =
+          putKafkaString topic *> putKafkaArray putPartition partitions
+    in putKafkaArray putTopic topics
 
-putApiVersionsResponse :: KafkaResponse -> Put
-putApiVersionsResponse (ApiVersionsResponseV0 err versions) =
-  let putVersion (apiKey, minVersion, maxVersion) =
-        putInt16be apiKey *> putInt16be minVersion *> putInt16be maxVersion
-  in putKakfaError err *> putKafkaArray putVersion versions
+instance KafkaResponse OffsetListResponseVO where
+  put (OffsetListResponseVO topics) =
+    let putPartition (partitionId, err, offset) =
+          putInt32be partitionId *> putKakfaError err *>
+          putKafkaNullableArray putInt64be offset
+        putTopic (topic, partitions) =
+          putKafkaString topic *> putKafkaArray putPartition partitions
+    in putKafkaArray putTopic topics
 
-writeResponse :: KafkaResponse -> ByteString
-writeResponse resp@(ProduceResponseV0 _) = runPut . putProduceResponse $ resp
-writeResponse resp@(ProduceResponseV1 _ _) = runPut . putProduceResponse $ resp
-writeResponse resp@(FetchResponseV0 _) = runPut . putFetchResponse $ resp
-writeResponse resp@(OffsetListResponseVO _) =
-  runPut . putOffsetListResponse $ resp
-writeResponse resp@(TopicMetadataResponseV0 _ _) =
-  runPut . putTopicMetadataResponse $ resp
-writeResponse resp@(ApiVersionsResponseV0 _ _) =
-  runPut . putApiVersionsResponse $ resp
+instance KafkaResponse ApiVersionsResponseV0 where
+  put (ApiVersionsResponseV0 err versions) =
+    let putVersion (apiKey, minVersion, maxVersion) =
+          putInt16be apiKey *> putInt16be minVersion *> putInt16be maxVersion
+    in putKakfaError err *> putKafkaArray putVersion versions
+
+writeResponse :: KafkaResponseBox -> ByteString
+writeResponse (KResp resp) = runPut . put $ resp

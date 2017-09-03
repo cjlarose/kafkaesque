@@ -19,14 +19,15 @@ import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Message (Message(..), MessageSet)
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
-import Kafkaesque.Request.KafkaRequest (KafkaRequest, respond)
+import Kafkaesque.Request.KafkaRequest
+       (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
        (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
         signedInt32be, signedInt64be)
 import Kafkaesque.Request.Queries (getTopicPartition)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
-        KafkaResponse(ProduceResponseV0, ProduceResponseV1), putMessage)
+        ProduceResponseV0(..), ProduceResponseV1(..), putMessage)
 
 newtype TimeoutMs =
   TimeoutMs Int32
@@ -129,7 +130,7 @@ writeMessageSet conn topicId partition messages = do
   return (NoError, baseOffset)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> ProduceRequest -> IO KafkaResponse
+     Pool.Pool PG.Connection -> ProduceRequest -> IO KafkaResponseBox
 respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
   -- TODO: Fetch topicIds in bulk
  = do
@@ -155,10 +156,10 @@ respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
                 return (partitionId, err, offset))
          return (topic, partResponses))
   case v of
-    0 -> return $ ProduceResponseV0 topicResponses
+    0 -> return . KResp $ ProduceResponseV0 topicResponses
     1 -> do
       let throttleTimeMs = 0 :: Int32
-      return $ ProduceResponseV1 topicResponses throttleTimeMs
+      return . KResp $ ProduceResponseV1 topicResponses throttleTimeMs
 
 instance KafkaRequest ProduceRequest where
   respond = respondToRequest
