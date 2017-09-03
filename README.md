@@ -8,7 +8,7 @@ Kafkaesque leans on durability instead of replication for fault tolerance. For e
 
 Kafkaesque is suitable for applications that have use cases that are addressed by the style of development Kafka promotes, but do not have the scalability demands for which Kafka is optimized or the operational budget it demands. Because Kafkaesque uses PostgreSQL for its data backend, it is especially well-suited for use with RDBMS-as-a-service products like AWS's RDS.
 
-Because the Kafkaesque server is API-compatible with Kafka, you can use any of the exiting [Kafka client libraries][clients] with Kafkaesque to produce and consume logs. This means that it is possible to use Kafkaesqueue when developing an application and to use Kafka in staging and production environments.
+Because the Kafkaesque server is API-compatible with Kafka, you can use any of the existing [Kafka client libraries][clients] with Kafkaesque to produce and consume logs. This means that it is possible to use Kafkaesqueue when developing an application and to use Kafka in staging and production environments.
 
 [kafka-home]: http://kafka.apache.org/
 [clients]: https://cwiki.apache.org/confluence/display/KAFKA/Clients
