@@ -47,7 +47,7 @@ fetchMessages conn topicId partitionId startOffset maxBytes = do
                   AND byte_offset BETWEEN ? AND ?
                   ORDER BY byte_offset |]
       let maxEndOffset =
-            firstByteOffset + fromIntegral maxBytes - firstMessageLength
+            firstByteOffset + fromIntegral maxBytes - (firstMessageLength + 12)
       PG.query
         conn
         messageSetQuery

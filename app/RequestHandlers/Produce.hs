@@ -43,7 +43,7 @@ insertMessages conn topicId partitionId baseOffset totalBytes messages = do
              let messageBytes = runPut $ putMessage message
                  messageLen =
                    fromIntegral (Data.ByteString.length messageBytes) :: Int64
-                 endByteOffset = currentTotalBytes + messageLen
+                 endByteOffset = currentTotalBytes + messageLen + 12
                  tuple =
                    ( topicId
                    , partitionId
