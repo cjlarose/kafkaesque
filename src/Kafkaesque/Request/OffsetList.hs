@@ -18,7 +18,7 @@ import Kafkaesque.Request.Queries
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         OffsetListResponsePartition, OffsetListResponseTopic,
-        OffsetListResponseVO(..))
+        OffsetListResponseV0(..))
 
 data OffsetListRequestTimestamp
   = LatestOffset
@@ -106,7 +106,7 @@ respondToRequest ::
 respondToRequest pool (OffsetListRequest (ApiVersion 0) _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
-  return . KResp $ OffsetListResponseVO topicResponses
+  return . KResp $ OffsetListResponseV0 topicResponses
 
 instance KafkaRequest OffsetListRequest where
   respond = respondToRequest

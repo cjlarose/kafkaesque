@@ -8,7 +8,7 @@ module Kafkaesque.Response
   , ProduceResponseV0(..)
   , ProduceResponseV1(..)
   , FetchResponseV0(..)
-  , OffsetListResponseVO(..)
+  , OffsetListResponseV0(..)
   , TopicMetadataResponseV0(..)
   , ApiVersionsResponseV0(..)
   , FetchResponseTopic
@@ -74,8 +74,8 @@ data ProduceResponseV1 =
 newtype FetchResponseV0 =
   FetchResponseV0 [FetchResponseTopic]
 
-newtype OffsetListResponseVO =
-  OffsetListResponseVO [OffsetListResponseTopic]
+newtype OffsetListResponseV0 =
+  OffsetListResponseV0 [OffsetListResponseTopic]
 
 data TopicMetadataResponseV0 =
   TopicMetadataResponseV0 [Broker]
@@ -181,8 +181,8 @@ instance KafkaResponse FetchResponseV0 where
           putKafkaString topic *> putKafkaArray putPartition partitions
     in putKafkaArray putTopic topics
 
-instance KafkaResponse OffsetListResponseVO where
-  put (OffsetListResponseVO topics) =
+instance KafkaResponse OffsetListResponseV0 where
+  put (OffsetListResponseV0 topics) =
     let putPartition (partitionId, err, offset) =
           putInt32be partitionId *> putKakfaError err *>
           putKafkaNullableArray putInt64be offset
