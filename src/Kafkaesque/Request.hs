@@ -2,6 +2,8 @@ module Kafkaesque.Request
   ( KafkaRequest(..)
   , kafkaRequest
   , ApiVersion(..)
+  , FetchRequestTopic
+  , FetchRequestPartition
   , OffsetListRequestTopic
   , OffsetListRequestPartition
   , OffsetListRequestTimestamp(OffsetListTimestamp, LatestOffset, EarliestOffset)

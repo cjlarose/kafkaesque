@@ -6,6 +6,8 @@ module Kafkaesque.Response
   , KafkaResponse(..)
   , writeResponse
   , putMessage
+  , FetchResponseTopic
+  , FetchResponsePartition
   , OffsetListResponseTopic
   , OffsetListResponsePartition
   ) where

@@ -12,9 +12,11 @@ import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Kafkaesque.Request
-       (ApiVersion(..), KafkaRequest(FetchRequest))
+       (ApiVersion(..), FetchRequestPartition, FetchRequestTopic,
+        KafkaRequest(FetchRequest))
 import Kafkaesque.Response
-       (KafkaError(NoError, UnknownTopicOrPartition),
+       (FetchResponsePartition, FetchResponseTopic,
+        KafkaError(NoError, UnknownTopicOrPartition),
         KafkaResponse(FetchResponseV0))
 import RequestHandlers.Queries (getTopicPartition, getNextOffset)
 
@@ -52,44 +54,30 @@ fetchMessages conn topicId partitionId startOffset maxBytes = do
         (topicId, partitionId, firstByteOffset, maxEndOffset)
     _ -> return []
 
+fetchTopicPartition ::
+     PG.Connection
+  -> String
+  -> FetchRequestPartition
+  -> IO FetchResponsePartition
+fetchTopicPartition conn topicName (partitionId, offset, maxBytes) = do
+  topicPartitionRes <- getTopicPartition conn topicName partitionId
+  maybe
+    (return ((partitionId, UnknownTopicOrPartition, -1 :: Int64), []))
+    (\(topicId, partitionId) -> do
+       messageSet <- fetchMessages conn topicId partitionId offset maxBytes
+       highwaterMarkOffset <- getNextOffset conn topicId partitionId
+       let header = (partitionId, NoError, highwaterMarkOffset - 1)
+       return (header, messageSet))
+    topicPartitionRes
+
+fetchTopic :: PG.Connection -> FetchRequestTopic -> IO FetchResponseTopic
+fetchTopic conn (topicName, parts) = do
+  partResponses <- forM parts (fetchTopicPartition conn topicName)
+  return (topicName, partResponses)
+
 respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
- = do
-  topicResponses <-
-    forM
-      ts
-      (\(topic, parts) -> do
-         partResponses <-
-           forM
-             parts
-             (\(partitionId, offset, maxBytes) ->
-                Pool.withResource
-                  pool
-                  (\conn -> do
-                     topicPartitionRes <-
-                       Pool.withResource
-                         pool
-                         (\conn -> getTopicPartition conn topic partitionId)
-                     maybe
-                       (return
-                          ( (partitionId, UnknownTopicOrPartition, -1 :: Int64)
-                          , []))
-                       (\(topicId, partitionId) -> do
-                          messageSet <-
-                            fetchMessages
-                              conn
-                              topicId
-                              partitionId
-                              offset
-                              maxBytes
-                          highwaterMarkOffset <-
-                            getNextOffset conn topicId partitionId
-                          let header =
-                                (partitionId, NoError, highwaterMarkOffset - 1)
-                          return (header, messageSet))
-                       topicPartitionRes))
-         return (topic, partResponses))
-  return . FetchResponseV0 $ topicResponses
+ = FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic)
