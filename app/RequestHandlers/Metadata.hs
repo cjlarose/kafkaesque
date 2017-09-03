@@ -3,6 +3,7 @@ module RequestHandlers.Metadata
   ) where
 
 import qualified Data.Pool as Pool
+import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Request
        (ApiVersion(..), KafkaRequest(TopicMetadataRequest))
@@ -12,6 +13,7 @@ import Kafkaesque.Response
         TopicMetadata(..))
 import RequestHandlers.Queries (getTopicsWithPartitionCounts)
 
+respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (TopicMetadataRequest (ApiVersion 0) ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]

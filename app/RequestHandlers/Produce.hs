@@ -78,6 +78,7 @@ writeMessageSet conn topicId partition messages = do
       return baseOffset
   return (NoError, baseOffset)
 
+respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (ProduceRequest (ApiVersion v) acks timeout ts)
   -- TODO: Fetch topicIds in bulk
  = do

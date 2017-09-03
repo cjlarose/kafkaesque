@@ -60,6 +60,7 @@ fetchMessages conn topicId partitionId startOffset maxBytes = do
         (topicId, partitionId, firstByteOffset, maxEndOffset)
     _ -> return []
 
+respondToRequest :: Pool.Pool PG.Connection -> KafkaRequest -> IO KafkaResponse
 respondToRequest pool (FetchRequest (ApiVersion 0) _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
