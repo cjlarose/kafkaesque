@@ -5,6 +5,7 @@ module RequestHandlers.OffsetList
   ) where
 
 import Data.Int (Int32, Int64)
+import Data.Maybe (catMaybes)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
@@ -25,9 +26,9 @@ fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets = do
   latest <- getNextOffset conn topicId partitionId
   -- TODO handle actual timestamp offsets
   let offsets = case timestamp of
-                  LatestOffset -> [latest, earliest]
+                  LatestOffset -> [Just latest, earliest]
                   EarliestOffset -> [earliest]
-  return . take (fromIntegral maxOffsets) $ offsets
+  return . take (fromIntegral maxOffsets) . catMaybes $ offsets
 
 fetchPartitionOffsets ::
      PG.Connection

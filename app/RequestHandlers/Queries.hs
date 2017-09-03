@@ -57,7 +57,7 @@ getNextOffset conn topicId partitionId = do
   [PG.Only next] <- PG.query conn query (topicId, partitionId)
   return next
 
-getEarliestOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
+getEarliestOffset :: PG.Connection -> Int32 -> Int32 -> IO (Maybe Int64)
 getEarliestOffset conn topicId partitionId = do
   let query = [sql| SELECT MIN(log_offset) FROM records WHERE topic_id = ? AND partition_id = ? |]
   [PG.Only min] <- PG.query conn query (topicId, partitionId)
