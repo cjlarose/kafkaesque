@@ -6,6 +6,8 @@ module RequestHandlers.Queries
   , getPartitionCount
   , getTopicPartition
   , getTopicsWithPartitionCounts
+  , getNextOffset
+  , getEarliestOffset
   ) where
 
 import Data.Int (Int32, Int64)
@@ -48,3 +50,15 @@ getTopicsWithPartitionCounts conn = do
                     GROUP BY topic_id) t1
               LEFT JOIN topics ON t1.topic_id = topics.id; |]
   PG.query_ conn query
+
+getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
+getNextOffset conn topicId partitionId = do
+  let query = [sql| SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? |]
+  [PG.Only next] <- PG.query conn query (topicId, partitionId)
+  return next
+
+getEarliestOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
+getEarliestOffset conn topicId partitionId = do
+  let query = [sql| SELECT MIN(log_offset) FROM records WHERE topic_id = ? AND partition_id = ? |]
+  [PG.Only min] <- PG.query conn query (topicId, partitionId)
+  return min

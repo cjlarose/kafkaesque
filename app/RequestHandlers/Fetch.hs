@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module RequestHandlers.Fetch
@@ -17,14 +16,7 @@ import Kafkaesque.Request
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         KafkaResponse(FetchResponseV0))
-import RequestHandlers.Queries (getTopicPartition)
-
-getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
-getNextOffset conn topicId partitionId = do
-  let query =
-        "SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ?"
-  [PG.Only res] <- PG.query conn query (topicId, partitionId)
-  return res
+import RequestHandlers.Queries (getTopicPartition, getNextOffset)
 
 fetchMessages ::
      PG.Connection

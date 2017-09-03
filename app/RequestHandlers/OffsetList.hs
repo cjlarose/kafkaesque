@@ -16,19 +16,7 @@ import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         KafkaResponse(OffsetListResponseVO), OffsetListResponsePartition,
         OffsetListResponseTopic)
-import RequestHandlers.Queries (getTopicPartition)
-
-getEarliestOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
-getEarliestOffset conn topicId partitionId = do
-  let query = [sql| SELECT MIN(log_offset) FROM records WHERE topic_id = ? AND partition_id = ? |]
-  [PG.Only min] <- PG.query conn query (topicId, partitionId)
-  return min
-
-getNextOffset :: PG.Connection -> Int32 -> Int32 -> IO Int64
-getNextOffset conn topicId partitionId = do
-  let query = [sql| SELECT next_offset FROM partitions WHERE topic_id = ? AND partition_id = ? |]
-  [PG.Only next] <- PG.query conn query (topicId, partitionId)
-  return next
+import RequestHandlers.Queries (getTopicPartition, getNextOffset, getEarliestOffset)
 
 fetchTopicPartitionOffsets ::
      PG.Connection -> Int32 -> Int32 -> OffsetListRequestTimestamp -> Int32 -> IO [Int64]
