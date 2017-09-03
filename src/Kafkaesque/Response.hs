@@ -28,6 +28,7 @@ data Broker =
 
 data KafkaError
   = NoError
+  | OffsetOutOfRange
   | UnknownTopicOrPartition
 
 data PartitionMetadata =
@@ -102,6 +103,7 @@ putKafkaNullableArray putter (Just xs) = putKafkaArray putter xs
 
 kafkaErrorCode :: KafkaError -> Int16
 kafkaErrorCode NoError = 0
+kafkaErrorCode OffsetOutOfRange = 1
 kafkaErrorCode UnknownTopicOrPartition = 3
 
 putKakfaError :: KafkaError -> Put
