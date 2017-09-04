@@ -5,7 +5,6 @@ module Kafkaesque.Request.Produce
   , produceRequestV1
   ) where
 
-import Control.Monad (forM)
 import Data.Attoparsec.Binary (anyWord32be)
 import Data.Attoparsec.ByteString
        (Parser, anyWord8, many', parseOnly, take)
@@ -129,42 +128,38 @@ updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
   PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
   return ()
 
-writeMessageSet ::
-     PG.Connection -> Int32 -> Int32 -> MessageSet -> IO (KafkaError, Int64)
-writeMessageSet conn topicId partition messages = do
-  baseOffset <-
-    PG.withTransaction conn $ do
-      (baseOffset, totalBytes) <- getNextOffsetsForUpdate conn topicId partition
-      (finalOffset, finalTotalBytes) <-
-        insertMessages conn topicId partition baseOffset totalBytes messages
-      updatePartitionOffsets conn topicId partition finalOffset finalTotalBytes
-      return baseOffset
-  return (NoError, baseOffset)
+writeMessageSet :: PG.Connection -> Int32 -> Int32 -> MessageSet -> IO Int64
+writeMessageSet conn topicId partition messages =
+  PG.withTransaction conn $ do
+    (baseOffset, totalBytes) <- getNextOffsetsForUpdate conn topicId partition
+    (finalOffset, finalTotalBytes) <-
+      insertMessages conn topicId partition baseOffset totalBytes messages
+    updatePartitionOffsets conn topicId partition finalOffset finalTotalBytes
+    return baseOffset
 
 respondToRequest ::
      Pool.Pool PG.Connection -> [TopicData] -> IO [ProduceResponseTopic]
 respondToRequest pool
   -- TODO: Fetch topicIds in bulk
- =
-  mapM
-    (\(topic, parts) -> do
-       partResponses <-
-         forM
-           parts
-           (\(partitionId, messageSet) -> do
-              (err, offset) <-
-                Pool.withResource
-                  pool
-                  (\conn -> do
-                     topicPartitionRes <-
-                       getTopicPartition conn topic partitionId
-                     maybe
-                       (return (UnknownTopicOrPartition, -1 :: Int64))
-                       (\(topicId, partitionId) ->
-                          writeMessageSet conn topicId partitionId messageSet)
-                       topicPartitionRes)
-              return (partitionId, err, offset))
-       return (topic, partResponses))
+ = do
+  let writePartitionMessages topicName partitionId messageSet conn = do
+        topicPartitionRes <- getTopicPartition conn topicName partitionId
+        maybe
+          (return (UnknownTopicOrPartition, -1 :: Int64))
+          (\(topicId, partitionId) -> do
+             offset <- writeMessageSet conn topicId partitionId messageSet
+             return (NoError, offset))
+          topicPartitionRes
+      getPartitionResponse topicName (partitionId, messageSet) = do
+        (err, offset) <-
+          Pool.withResource
+            pool
+            (writePartitionMessages topicName partitionId messageSet)
+        return (partitionId, err, offset)
+      getTopicResponse (topicName, parts) = do
+        partResponses <- mapM (getPartitionResponse topicName) parts
+        return (topicName, partResponses)
+  mapM getTopicResponse
 
 instance KafkaRequest ProduceRequestV0 where
   respond pool (ProduceRequestV0 _ _ topics) = do
