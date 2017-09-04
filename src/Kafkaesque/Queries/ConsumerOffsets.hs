@@ -69,7 +69,7 @@ getOffsetForConsumer conn cgId topicName partitionId = do
           Nothing -> Left "Value in offset commit message is empty"
           Just v ->
             case parseOnly valueParser v of
-              Left err -> Left "Cannot parse value of offset commit message"
+              Left _ -> Left "Cannot parse value of offset commit message"
               Right val -> Right val
       getLatestOffset =
         listToMaybe .

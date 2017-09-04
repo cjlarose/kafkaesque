@@ -18,8 +18,7 @@ import Kafkaesque.Request.TopicMetadata (metadataRequestV0)
 
 kafkaRequest :: Parser (RequestMetadata, KafkaRequestBox)
 kafkaRequest = do
-  metadata@(apiKey, apiVersion@(ApiVersion v), correlationId, clientId) <-
-    requestMessageHeader
+  metadata@(apiKey, ApiVersion v, _, _) <- requestMessageHeader
   let requestParser =
         case (apiKey, v) of
           (0, 0) -> KR <$> produceRequestV0

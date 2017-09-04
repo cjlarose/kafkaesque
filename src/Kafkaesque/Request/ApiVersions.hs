@@ -21,7 +21,7 @@ apiVersionsRequestV0 = ApiVersionsRequestV0 <$> kafkaArray signedInt16be
 
 respondToRequest ::
      Pool.Pool PG.Connection -> ApiVersionsRequestV0 -> IO KafkaResponseBox
-respondToRequest pool (ApiVersionsRequestV0 apiKeys) =
+respondToRequest _ (ApiVersionsRequestV0 _) =
   return . KResp $
   ApiVersionsResponseV0 noError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
