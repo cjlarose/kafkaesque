@@ -27,12 +27,12 @@ insertMessages ::
   -> Int32
   -> Int64
   -> Int64
-  -> [(Int64, Message)]
+  -> [Message]
   -> IO (Int64, Int64)
 insertMessages conn topicId partitionId baseOffset totalBytes messages = do
   let (newTuples, finalOffset, finalTotalBytes) =
         foldl'
-          (\(f, logOffset, currentTotalBytes) (_, message) ->
+          (\(f, logOffset, currentTotalBytes) message ->
              let messageBytes = runPut $ putMessage message
                  messageLen =
                    fromIntegral (Data.ByteString.length messageBytes) :: Int64
@@ -59,7 +59,7 @@ updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
   PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
   return ()
 
-writeMessageSet :: PG.Connection -> Int32 -> Int32 -> MessageSet -> IO Int64
+writeMessageSet :: PG.Connection -> Int32 -> Int32 -> [Message] -> IO Int64
 writeMessageSet conn topicId partition messages =
   PG.withTransaction conn $ do
     (baseOffset, totalBytes) <- getNextOffsetsForUpdate conn topicId partition

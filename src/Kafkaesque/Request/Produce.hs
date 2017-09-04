@@ -86,7 +86,8 @@ respondToRequest pool
         maybe
           (return (UnknownTopicOrPartition, -1 :: Int64))
           (\(topicId, partitionId) -> do
-             offset <- writeMessageSet conn topicId partitionId messageSet
+             offset <-
+               writeMessageSet conn topicId partitionId (map snd messageSet)
              return (NoError, offset))
           topicPartitionRes
       getPartitionResponse topicName (partitionId, messageSet) = do
