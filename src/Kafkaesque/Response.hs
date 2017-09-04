@@ -41,6 +41,7 @@ data KafkaError
   = NoError
   | OffsetOutOfRange
   | UnknownTopicOrPartition
+  | UnexpectedError
 
 data PartitionMetadata =
   PartitionMetadata KafkaError
@@ -129,6 +130,7 @@ kafkaErrorCode :: KafkaError -> Int16
 kafkaErrorCode NoError = 0
 kafkaErrorCode OffsetOutOfRange = 1
 kafkaErrorCode UnknownTopicOrPartition = 3
+kafkaErrorCode UnexpectedError = -1
 
 putKakfaError :: KafkaError -> Put
 putKakfaError = putInt16be . kafkaErrorCode
