@@ -5,11 +5,15 @@ module Kafkaesque.Response
   , TopicMetadata(..)
   , writeResponse
   , putKafkaNullabeBytes
+  , putInt32be
+  , putInt64be
+  , putKafkaString
   , ProduceResponseV0(..)
   , ProduceResponseV1(..)
   , FetchResponseV0(..)
   , OffsetListResponseV0(..)
   , TopicMetadataResponseV0(..)
+  , OffsetCommitResponseV0(..)
   , ApiVersionsResponseV0(..)
   , ProduceResponseTopic
   , FetchResponseTopic
@@ -80,6 +84,9 @@ newtype OffsetListResponseV0 =
 data TopicMetadataResponseV0 =
   TopicMetadataResponseV0 [Broker]
                           [TopicMetadata]
+
+newtype OffsetCommitResponseV0 =
+  OffsetCommitResponseV0 [(String, [(Int32, KafkaError)])]
 
 data ApiVersionsResponseV0 =
   ApiVersionsResponseV0 KafkaError
@@ -189,6 +196,14 @@ instance KafkaResponse ApiVersionsResponseV0 where
     let putVersion (apiKey, minVersion, maxVersion) =
           putInt16be apiKey *> putInt16be minVersion *> putInt16be maxVersion
     in putKakfaError err *> putKafkaArray putVersion versions
+
+instance KafkaResponse OffsetCommitResponseV0 where
+  put (OffsetCommitResponseV0 topics) =
+    let putPartition (partitionId, err) =
+          putInt32be partitionId *> putKakfaError err
+        putTopic (topicName, parts) =
+          putKafkaString topicName *> putKafkaArray putPartition parts
+    in putKafkaArray putTopic topics
 
 writeResponse :: KafkaResponseBox -> ByteString
 writeResponse (KResp resp) = runPut . put $ resp

@@ -26,6 +26,7 @@ library
                      , Kafkaesque.Request.Fetch
                      , Kafkaesque.Request.OffsetList
                      , Kafkaesque.Request.TopicMetadata
+                     , Kafkaesque.Request.OffsetCommit
                      , Kafkaesque.Request.ApiVersions
                      , Kafkaesque.Queries
                      , Kafkaesque.Queries.Log
@@ -37,6 +38,8 @@ library
                      , utf8-string
                      , postgresql-simple
                      , resource-pool
+                     , cryptohash
+                     , digest
   default-language:    Haskell2010
 
 executable kafkaesque-exe
