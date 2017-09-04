@@ -1,4 +1,4 @@
-module Kafkaesque.Request.Parsers
+module Kafkaesque.Parsers
   ( signedInt16be
   , signedInt32be
   , signedInt64be

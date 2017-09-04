@@ -9,12 +9,12 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
+import Kafkaesque.Parsers
+       (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Request.Parsers
-       (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         OffsetListResponsePartition, OffsetListResponseTopic,

@@ -21,7 +21,7 @@ library
                      , Kafkaesque.Message
                      , Kafkaesque.ApiVersion
                      , Kafkaesque.Request.KafkaRequest
-                     , Kafkaesque.Request.Parsers
+                     , Kafkaesque.Parsers
                      , Kafkaesque.Request.Produce
                      , Kafkaesque.Request.Fetch
                      , Kafkaesque.Request.OffsetList

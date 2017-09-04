@@ -7,10 +7,10 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
+import Kafkaesque.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Queries (getTopicsWithPartitionCounts)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Request.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Response
        (Broker(..), KafkaError(NoError), PartitionMetadata(..),
         TopicMetadata(..), TopicMetadataResponseV0(..))

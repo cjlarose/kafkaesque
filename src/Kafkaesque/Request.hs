@@ -13,13 +13,12 @@ import Data.Maybe (fromMaybe)
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Message (Message(..), MessageSet)
+import Kafkaesque.Parsers (RequestMetadata, requestMessageHeader)
 import Kafkaesque.Request.ApiVersions (apiVersionsRequestV0)
 import Kafkaesque.Request.Fetch (fetchRequestV0)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaRequestBox(..))
 import Kafkaesque.Request.OffsetList (offsetsRequestV0)
-import Kafkaesque.Request.Parsers
-       (RequestMetadata, requestMessageHeader)
 import Kafkaesque.Request.Produce
        (produceRequestV0, produceRequestV1)
 import Kafkaesque.Request.TopicMetadata (metadataRequestV0)

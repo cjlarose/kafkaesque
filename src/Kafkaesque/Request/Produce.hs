@@ -19,12 +19,12 @@ import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Message (Message(..), MessageSet)
+import Kafkaesque.Parsers
+       (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
+        signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Request.Parsers
-       (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
-        signedInt32be, signedInt64be)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         ProduceResponseTopic, ProduceResponseV0(..), ProduceResponseV1(..),
