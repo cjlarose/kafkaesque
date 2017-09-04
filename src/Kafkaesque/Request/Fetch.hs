@@ -6,14 +6,13 @@ module Kafkaesque.Request.Fetch
 
 import Control.Monad (forM)
 import Data.ByteString (ByteString)
-import Data.Int (Int16, Int32, Int64)
+import Data.Int (Int32, Int64)
 import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Data.Attoparsec.ByteString (Parser)
-import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.KafkaError
        (noError, offsetOutOfRange, unknownTopicOrPartition)
 import Kafkaesque.Parsers

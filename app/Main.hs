@@ -5,7 +5,7 @@ module Main where
 
 import Control.Concurrent (forkIO)
 import Control.Exception (SomeException(..), handle)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM_)
 import Control.Monad.Fix (fix)
 import Data.ByteString (ByteString, hGet, hPut, length)
 import Data.Int (Int32, Int64)
@@ -14,8 +14,7 @@ import Data.Serialize.Get (getWord32be, runGet)
 import Data.Serialize.Put (putWord32be, runPut)
 import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
-import Network.Socket hiding (recv, send)
-import Network.Socket.ByteString (recv, send)
+import Network.Socket
 import RequestHandlers (handleRequest)
 import System.IO (Handle, IOMode(ReadWriteMode), hClose)
 

@@ -3,7 +3,6 @@ module Kafkaesque.Request.Produce
   , produceRequestV1
   ) where
 
-import Data.Attoparsec.Binary (anyWord32be)
 import Data.Attoparsec.ByteString (Parser, many', parseOnly, take)
 import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
@@ -13,8 +12,8 @@ import qualified Database.PostgreSQL.Simple as PG
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Message (Message(..), MessageSet, messageParser)
 import Kafkaesque.Parsers
-       (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
-        signedInt32be, signedInt64be)
+       (kafkaArray, kafkaString, signedInt16be, signedInt32be,
+        signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest

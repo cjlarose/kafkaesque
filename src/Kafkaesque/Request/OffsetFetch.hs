@@ -3,7 +3,7 @@ module Kafkaesque.Request.OffsetFetch
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
-import Data.Int (Int32, Int64)
+import Data.Int (Int32)
 import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG

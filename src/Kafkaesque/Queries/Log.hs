@@ -4,14 +4,13 @@ module Kafkaesque.Queries.Log
   ( writeMessageSet
   ) where
 
-import Data.ByteString (ByteString)
 import qualified Data.ByteString (length)
 import Data.Int (Int32, Int64)
 import Data.List (foldl')
 import Data.Serialize.Put (runPut)
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Message (Message(..), MessageSet, putMessage)
+import Kafkaesque.Message (Message(..), putMessage)
 
 getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
 getNextOffsetsForUpdate conn topicId partitionId = do

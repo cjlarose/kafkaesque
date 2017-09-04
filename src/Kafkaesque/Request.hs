@@ -2,22 +2,13 @@ module Kafkaesque.Request
   ( kafkaRequest
   ) where
 
-import Data.Attoparsec.Binary
-       (anyWord16be, anyWord32be, anyWord64be)
-import Data.Attoparsec.ByteString
-       (Parser, anyWord8, count, many', parseOnly, take)
-import Data.ByteString (ByteString)
-import Data.ByteString.UTF8 (toString)
-import Data.Int (Int16, Int32, Int64)
-import Data.Maybe (fromMaybe)
+import Data.Attoparsec.ByteString (Parser)
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
-import Kafkaesque.Message (Message(..), MessageSet)
 import Kafkaesque.Parsers (RequestMetadata, requestMessageHeader)
 import Kafkaesque.Request.ApiVersions (apiVersionsRequestV0)
 import Kafkaesque.Request.Fetch (fetchRequestV0)
-import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaRequestBox(..))
+import Kafkaesque.Request.KafkaRequest (KafkaRequestBox(..))
 import Kafkaesque.Request.OffsetCommit (offsetCommitRequestV0)
 import Kafkaesque.Request.OffsetFetch (offsetFetchRequestV0)
 import Kafkaesque.Request.OffsetList (offsetsRequestV0)

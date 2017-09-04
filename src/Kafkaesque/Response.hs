@@ -27,8 +27,7 @@ import qualified Data.ByteString (length)
 import Data.ByteString.UTF8 (fromString)
 import Data.Int (Int16, Int32, Int64)
 import Data.Serialize.Put
-       (Put, putByteString, putWord16be, putWord32be, putWord64be,
-        putWord8, runPut)
+       (Put, putByteString, putWord16be, putWord32be, putWord64be, runPut)
 import Kafkaesque.KafkaError (KafkaError, kafkaErrorCode)
 import Kafkaesque.Request.KafkaRequest
        (KafkaResponse, KafkaResponseBox(..), put)
