@@ -30,6 +30,7 @@ library
                      , Kafkaesque.Request.ApiVersions
                      , Kafkaesque.Queries
                      , Kafkaesque.Queries.Log
+                     , Kafkaesque.Queries.ConsumerOffsets
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , attoparsec-binary
