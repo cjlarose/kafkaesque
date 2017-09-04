@@ -108,12 +108,7 @@ putKafkaBytes bs =
   (putInt32be . fromIntegral . Data.ByteString.length $ bs) *> putByteString bs
 
 putKafkaNullabeBytes :: Maybe ByteString -> Put
-putKafkaNullabeBytes bs =
-  case bs of
-    Nothing -> putInt32be (-1)
-    Just bs ->
-      (putInt32be . fromIntegral . Data.ByteString.length $ bs) *>
-      putByteString bs
+putKafkaNullabeBytes = maybe (putInt32be (-1)) putKafkaBytes
 
 putKafkaArray :: (a -> Put) -> [a] -> Put
 putKafkaArray putter xs =
