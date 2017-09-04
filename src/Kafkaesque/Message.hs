@@ -2,14 +2,18 @@ module Kafkaesque.Message
   ( Message(..)
   , MessageSet
   , putMessage
+  , messageParser
   , messageV0
   ) where
 
+import Data.Attoparsec.Binary (anyWord32be)
+import Data.Attoparsec.ByteString (Parser, anyWord8)
 import Data.ByteString (ByteString)
 import Data.Digest.CRC32 (crc32)
 import Data.Int (Int64)
 import Data.Serialize.Put (Put, putWord32be, putWord8, runPut)
 import Data.Word (Word32, Word8)
+import Kafkaesque.Parsers (kafkaNullabeBytes)
 
 import Kafkaesque.Response (putKafkaNullabeBytes)
 
@@ -31,6 +35,11 @@ putMessageContents magicByte attrs k v =
 putMessage :: Message -> Put
 putMessage (Message digest magicByte attrs k v) =
   putWord32be digest *> putMessageContents magicByte attrs k v
+
+messageParser :: Parser Message
+messageParser =
+  Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*> kafkaNullabeBytes <*>
+  kafkaNullabeBytes
 
 messageV0 :: Maybe ByteString -> Maybe ByteString -> Message
 messageV0 k v =

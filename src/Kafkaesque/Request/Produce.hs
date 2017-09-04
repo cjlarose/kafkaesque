@@ -4,14 +4,13 @@ module Kafkaesque.Request.Produce
   ) where
 
 import Data.Attoparsec.Binary (anyWord32be)
-import Data.Attoparsec.ByteString
-       (Parser, anyWord8, many', parseOnly, take)
+import Data.Attoparsec.ByteString (Parser, many', parseOnly, take)
 import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Message (Message(..), MessageSet)
+import Kafkaesque.Message (Message(..), MessageSet, messageParser)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
         signedInt32be, signedInt64be)
@@ -42,13 +41,9 @@ data ProduceRequestV1 =
 
 produceRequest :: Parser (Int16, TimeoutMs, [TopicData])
 produceRequest =
-  let message :: Parser Message
-      message =
-        Message <$> anyWord32be <*> anyWord8 <*> anyWord8 <*> kafkaNullabeBytes <*>
-        kafkaNullabeBytes
-      mesasgeSetElement :: Parser (Int64, Message)
+  let mesasgeSetElement :: Parser (Int64, Message)
       mesasgeSetElement =
-        (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> message
+        (\x y -> (x, y)) <$> (signedInt64be <* signedInt32be) <*> messageParser
       records :: Parser MessageSet
       records = do
         messageSetSize <- signedInt32be
