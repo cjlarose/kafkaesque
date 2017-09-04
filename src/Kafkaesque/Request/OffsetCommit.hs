@@ -60,8 +60,10 @@ getConsumerOffsetTopicPartition conn cgId = do
 
 consumerOffsetKey :: String -> String -> Int32 -> ByteString
 consumerOffsetKey cgId topicName partitionId =
-  runPut $
-  putKafkaString cgId *> putKafkaString topicName *> putInt32be partitionId
+  let putKey =
+        putKafkaString cgId *> putKafkaString topicName *>
+        putInt32be partitionId
+  in SHA256.hash . runPut $ putKey
 
 saveOffset ::
      PG.Connection -> String -> String -> Int32 -> Int64 -> String -> IO ()
