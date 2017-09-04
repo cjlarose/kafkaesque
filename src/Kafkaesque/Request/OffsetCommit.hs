@@ -11,7 +11,7 @@ import Data.ByteString.UTF8 (fromString)
 import Data.Int (Int32, Int64)
 import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
-import Data.Serialize.Put (runPut)
+import Data.Serialize.Put (putWord8, runPut)
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.Message (messageV0)
@@ -69,7 +69,8 @@ saveOffset conn cgId topicName partitionId offset metadata = do
   Just (offsetTopicId, offsetPartitionId) <-
     getConsumerOffsetTopicPartition conn cgId
   let key = consumerOffsetKey cgId topicName partitionId
-      value = runPut (putInt64be offset *> putKafkaString metadata)
+      value =
+        runPut (putWord8 0 *> putInt64be offset *> putKafkaString metadata)
       message = messageV0 (Just key) (Just value)
   writeMessageSet conn offsetTopicId offsetPartitionId [message]
   return ()
