@@ -27,7 +27,7 @@ library
                      , Kafkaesque.Request.OffsetList
                      , Kafkaesque.Request.TopicMetadata
                      , Kafkaesque.Request.ApiVersions
-                     , Kafkaesque.Request.Queries
+                     , Kafkaesque.Queries
   build-depends:       base >= 4.7 && < 5
                      , attoparsec
                      , attoparsec-binary

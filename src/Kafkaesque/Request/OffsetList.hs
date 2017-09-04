@@ -8,13 +8,13 @@ import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.Queries
+       (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
-import Kafkaesque.Request.Queries
-       (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Response
        (KafkaError(NoError, UnknownTopicOrPartition),
         OffsetListResponsePartition, OffsetListResponseTopic,

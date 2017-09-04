@@ -6,11 +6,11 @@ import Data.Attoparsec.ByteString (Parser)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.Queries (getTopicsWithPartitionCounts)
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers (kafkaArray, kafkaString)
-import Kafkaesque.Request.Queries (getTopicsWithPartitionCounts)
 import Kafkaesque.Response
        (Broker(..), KafkaError(NoError), PartitionMetadata(..),
         TopicMetadata(..), TopicMetadataResponseV0(..))

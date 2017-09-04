@@ -13,13 +13,12 @@ import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Data.Attoparsec.ByteString (Parser)
+import Kafkaesque.Queries (getNextOffset, getTopicPartition)
 import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
-import Kafkaesque.Request.Queries
-       (getNextOffset, getTopicPartition)
 import Kafkaesque.Response
        (FetchResponsePartition, FetchResponseTopic, FetchResponseV0(..),
         KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition))

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Kafkaesque.Request.Queries
+module Kafkaesque.Queries
   ( getTopicId
   , getPartitionCount
   , getTopicPartition
