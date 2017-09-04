@@ -1,6 +1,5 @@
 module Kafkaesque.Response
   ( Broker(..)
-  , KafkaError(..)
   , PartitionMetadata(..)
   , TopicMetadata(..)
   , writeResponse
@@ -30,6 +29,7 @@ import Data.Int (Int16, Int32, Int64)
 import Data.Serialize.Put
        (Put, putByteString, putWord16be, putWord32be, putWord64be,
         putWord8, runPut)
+import Kafkaesque.KafkaError (KafkaError, kafkaErrorCode)
 import Kafkaesque.Request.KafkaRequest
        (KafkaResponse, KafkaResponseBox(..), put)
 
@@ -37,12 +37,6 @@ data Broker =
   Broker Int32
          String
          Int32
-
-data KafkaError
-  = NoError
-  | OffsetOutOfRange
-  | UnknownTopicOrPartition
-  | UnexpectedError
 
 data PartitionMetadata =
   PartitionMetadata KafkaError
@@ -129,12 +123,6 @@ putKafkaArray putter xs =
 putKafkaNullableArray :: (a -> Put) -> Maybe [a] -> Put
 putKafkaNullableArray _ Nothing = putInt32be (-1)
 putKafkaNullableArray putter (Just xs) = putKafkaArray putter xs
-
-kafkaErrorCode :: KafkaError -> Int16
-kafkaErrorCode NoError = 0
-kafkaErrorCode OffsetOutOfRange = 1
-kafkaErrorCode UnknownTopicOrPartition = 3
-kafkaErrorCode UnexpectedError = -1
 
 putKakfaError :: KafkaError -> Put
 putKakfaError = putInt16be . kafkaErrorCode

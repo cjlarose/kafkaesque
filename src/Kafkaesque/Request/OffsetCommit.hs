@@ -9,15 +9,15 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.KafkaError
+       (KafkaError(NoError, UnknownTopicOrPartition))
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (saveOffset)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (KafkaError(NoError, UnknownTopicOrPartition),
-        OffsetCommitResponseV0(..))
+import Kafkaesque.Response (OffsetCommitResponseV0(..))
 
 type PartitionData = (Int32, Int64, String)
 

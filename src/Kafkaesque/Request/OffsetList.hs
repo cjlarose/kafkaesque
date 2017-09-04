@@ -9,6 +9,8 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
+import Kafkaesque.KafkaError
+       (KafkaError(NoError, UnknownTopicOrPartition))
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries
@@ -16,8 +18,7 @@ import Kafkaesque.Queries
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Response
-       (KafkaError(NoError, UnknownTopicOrPartition),
-        OffsetListResponsePartition, OffsetListResponseTopic,
+       (OffsetListResponsePartition, OffsetListResponseTopic,
         OffsetListResponseV0(..))
 
 data OffsetListRequestTimestamp

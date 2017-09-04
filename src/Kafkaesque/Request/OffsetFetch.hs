@@ -8,14 +8,14 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.KafkaError
+       (KafkaError(NoError, UnexpectedError, UnknownTopicOrPartition))
 import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (KafkaError(NoError, UnexpectedError, UnknownTopicOrPartition),
-        OffsetFetchResponseV0(..))
+import Kafkaesque.Response (OffsetFetchResponseV0(..))
 
 data OffsetFetchRequestV0 =
   OffsetFetchRequestV0 String

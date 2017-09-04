@@ -10,6 +10,8 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.KafkaError
+       (KafkaError(NoError, UnknownTopicOrPartition))
 import Kafkaesque.Message (Message(..), MessageSet, messageParser)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
@@ -19,8 +21,8 @@ import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Response
-       (KafkaError(NoError, UnknownTopicOrPartition),
-        ProduceResponseTopic, ProduceResponseV0(..), ProduceResponseV1(..))
+       (ProduceResponseTopic, ProduceResponseV0(..),
+        ProduceResponseV1(..))
 
 newtype TimeoutMs =
   TimeoutMs Int32
