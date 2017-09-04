@@ -1,18 +1,24 @@
 module Kafkaesque.KafkaError
-  ( KafkaError(..)
+  ( KafkaError
+  , noError
+  , offsetOutOfRange
+  , unknownTopicOrPartition
+  , unexpectedError
   , kafkaErrorCode
   ) where
 
 import Data.Int (Int16)
 
-data KafkaError
-  = NoError
-  | OffsetOutOfRange
-  | UnknownTopicOrPartition
-  | UnexpectedError
+newtype KafkaError =
+  KafkaError Int16
+
+noError = KafkaError 0
+
+offsetOutOfRange = KafkaError 1
+
+unknownTopicOrPartition = KafkaError 3
+
+unexpectedError = KafkaError (-1)
 
 kafkaErrorCode :: KafkaError -> Int16
-kafkaErrorCode NoError = 0
-kafkaErrorCode OffsetOutOfRange = 1
-kafkaErrorCode UnknownTopicOrPartition = 3
-kafkaErrorCode UnexpectedError = -1
+kafkaErrorCode (KafkaError errorCode) = errorCode

@@ -8,7 +8,7 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
-import Kafkaesque.KafkaError (KafkaError(NoError))
+import Kafkaesque.KafkaError (noError)
 import Kafkaesque.Parsers (kafkaArray, signedInt16be)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
@@ -24,7 +24,7 @@ respondToRequest ::
      Pool.Pool PG.Connection -> ApiVersionsRequestV0 -> IO KafkaResponseBox
 respondToRequest pool (ApiVersionsRequestV0 apiKeys) =
   return . KResp $
-  ApiVersionsResponseV0 NoError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
+  ApiVersionsResponseV0 noError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
 instance KafkaRequest ApiVersionsRequestV0 where
   respond = respondToRequest

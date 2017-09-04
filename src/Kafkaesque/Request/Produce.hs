@@ -10,8 +10,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.KafkaError
-       (KafkaError(NoError, UnknownTopicOrPartition))
+import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Message (Message(..), MessageSet, messageParser)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaNullabeBytes, kafkaString, signedInt16be,
@@ -81,11 +80,11 @@ respondToRequest pool
   let writePartitionMessages topicName partitionId messageSet conn = do
         topicPartitionRes <- getTopicPartition conn topicName partitionId
         maybe
-          (return (UnknownTopicOrPartition, -1 :: Int64))
+          (return (unknownTopicOrPartition, -1 :: Int64))
           (\(topicId, partitionId) -> do
              offset <-
                writeMessageSet conn topicId partitionId (map snd messageSet)
-             return (NoError, offset))
+             return (noError, offset))
           topicPartitionRes
       getPartitionResponse topicName (partitionId, messageSet) = do
         (err, offset) <-

@@ -7,7 +7,7 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
-import Kafkaesque.KafkaError (KafkaError(NoError))
+import Kafkaesque.KafkaError (noError)
 import Kafkaesque.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Queries (getTopicsWithPartitionCounts)
 import Kafkaesque.Request.KafkaRequest
@@ -29,14 +29,14 @@ respondToRequest pool (TopicMetadataRequestV0 ts) = do
   let brokers = [Broker brokerNodeId "localhost" 9092]
   let makePartitionMetadata partitionId =
         PartitionMetadata
-          NoError
+          noError
           (fromIntegral partitionId)
           brokerNodeId
           [brokerNodeId]
           [brokerNodeId]
   let makeTopicMetadata (name, partitionCount) =
         TopicMetadata
-          NoError
+          noError
           name
           (map makePartitionMetadata [0 .. (partitionCount - 1)])
   topics <- Pool.withResource pool getTopicsWithPartitionCounts

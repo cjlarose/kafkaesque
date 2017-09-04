@@ -9,8 +9,7 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.ApiVersion (ApiVersion(..))
-import Kafkaesque.KafkaError
-       (KafkaError(NoError, UnknownTopicOrPartition))
+import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries
@@ -88,11 +87,11 @@ fetchPartitionOffsets ::
 fetchPartitionOffsets conn topicName (partitionId, timestamp, maxOffsets) = do
   res <- getTopicPartition conn topicName partitionId
   case res of
-    Nothing -> return (partitionId, UnknownTopicOrPartition, Nothing)
+    Nothing -> return (partitionId, unknownTopicOrPartition, Nothing)
     Just (topicId, _) -> do
       offsets <-
         fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets
-      return (partitionId, NoError, Just offsets)
+      return (partitionId, noError, Just offsets)
 
 fetchTopicOffsets ::
      PG.Connection -> OffsetListRequestTopic -> IO OffsetListResponseTopic

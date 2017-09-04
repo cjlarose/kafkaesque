@@ -15,7 +15,7 @@ import Database.PostgreSQL.Simple.SqlQQ (sql)
 import Data.Attoparsec.ByteString (Parser)
 import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.KafkaError
-       (KafkaError(NoError, OffsetOutOfRange, UnknownTopicOrPartition))
+       (noError, offsetOutOfRange, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getNextOffset, getTopicPartition)
@@ -90,16 +90,16 @@ fetchTopicPartition ::
 fetchTopicPartition conn topicName (partitionId, offset, maxBytes) = do
   topicPartitionRes <- getTopicPartition conn topicName partitionId
   maybe
-    (return ((partitionId, UnknownTopicOrPartition, -1 :: Int64), []))
+    (return ((partitionId, unknownTopicOrPartition, -1 :: Int64), []))
     (\(topicId, partitionId) -> do
        nextOffset <- getNextOffset conn topicId partitionId
        highwaterMarkOffset <- getNextOffset conn topicId partitionId
        if offset >= nextOffset
          then return
-                ((partitionId, OffsetOutOfRange, highwaterMarkOffset - 1), [])
+                ((partitionId, offsetOutOfRange, highwaterMarkOffset - 1), [])
          else do
            messageSet <- fetchMessages conn topicId partitionId offset maxBytes
-           let header = (partitionId, NoError, highwaterMarkOffset - 1)
+           let header = (partitionId, noError, highwaterMarkOffset - 1)
            return (header, messageSet))
     topicPartitionRes
 

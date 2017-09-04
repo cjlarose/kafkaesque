@@ -9,8 +9,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.KafkaError
-       (KafkaError(NoError, UnknownTopicOrPartition))
+import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
@@ -52,10 +51,10 @@ respondToRequest pool (OffsetCommitRequestV0 cgId topics) = do
   let getResponsePartition conn topicName (partitionId, offset, metadata) = do
         topicRes <- getTopicPartition conn topicName partitionId
         maybe
-          (return (partitionId, UnknownTopicOrPartition))
+          (return (partitionId, unknownTopicOrPartition))
           (const $ do
              saveOffset conn cgId topicName partitionId offset metadata
-             return (partitionId, NoError))
+             return (partitionId, noError))
           topicRes
       getResponseTopic conn (topicName, partitions) = do
         partsResponse <- forM partitions (getResponsePartition conn topicName)

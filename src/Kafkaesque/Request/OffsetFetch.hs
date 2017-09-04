@@ -9,7 +9,7 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.KafkaError
-       (KafkaError(NoError, UnexpectedError, UnknownTopicOrPartition))
+       (noError, unexpectedError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
@@ -35,16 +35,16 @@ respondToRequest pool (OffsetFetchRequestV0 cgId topics) = do
   let getPartitionResponse conn topicName partitionId = do
         topicPartitionRes <- getTopicPartition conn topicName partitionId
         case topicPartitionRes of
-          Nothing -> return (partitionId, -1, "", UnknownTopicOrPartition)
+          Nothing -> return (partitionId, -1, "", unknownTopicOrPartition)
           Just _ -> do
             offsetRes <- getOffsetForConsumer conn cgId topicName partitionId
             case offsetRes of
-              Nothing -> return (partitionId, -1, "", NoError)
+              Nothing -> return (partitionId, -1, "", noError)
               Just offsetRes ->
                 case offsetRes of
-                  Left _ -> return (partitionId, -1, "", UnexpectedError)
+                  Left _ -> return (partitionId, -1, "", unexpectedError)
                   Right (offset, metadata) ->
-                    return (partitionId, offset, metadata, NoError)
+                    return (partitionId, offset, metadata, noError)
       getTopicResponse conn (topicName, partitionIds) = do
         parts <- mapM (getPartitionResponse conn topicName) partitionIds
         return (topicName, parts)
