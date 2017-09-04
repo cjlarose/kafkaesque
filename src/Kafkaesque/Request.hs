@@ -11,8 +11,8 @@ import Data.ByteString.UTF8 (toString)
 import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 
+import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Message (Message(..), MessageSet)
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.ApiVersions (apiVersionsRequestV0)
 import Kafkaesque.Request.Fetch (fetchRequestV0)
 import Kafkaesque.Request.KafkaRequest

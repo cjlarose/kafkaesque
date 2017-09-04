@@ -8,9 +8,9 @@ import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers

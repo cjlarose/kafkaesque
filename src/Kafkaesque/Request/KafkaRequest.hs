@@ -13,8 +13,6 @@ import qualified Data.Pool as Pool
 import Data.Serialize.Put (Put)
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Request.ApiVersion (ApiVersion)
-
 class KafkaResponse a where
   put :: a -> Put
 

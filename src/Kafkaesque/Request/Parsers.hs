@@ -18,7 +18,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.UTF8 (toString)
 import Data.Int (Int16, Int32, Int64)
 
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
+import Kafkaesque.ApiVersion (ApiVersion(..))
 
 signedInt16be :: Parser Int16
 signedInt16be = fromIntegral <$> anyWord16be

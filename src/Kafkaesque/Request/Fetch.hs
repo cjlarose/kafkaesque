@@ -13,8 +13,8 @@ import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Data.Attoparsec.ByteString (Parser)
+import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Queries (getNextOffset, getTopicPartition)
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers

@@ -7,7 +7,7 @@ import Data.Int (Int16)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
+import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers (kafkaArray, signedInt16be)

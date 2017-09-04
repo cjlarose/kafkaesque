@@ -1,4 +1,4 @@
-module Kafkaesque.Request.ApiVersion
+module Kafkaesque.ApiVersion
   ( ApiVersion(..)
   ) where
 

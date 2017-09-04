@@ -17,9 +17,9 @@ import qualified Data.Pool as Pool
 import Data.Serialize.Put (runPut)
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiVersion (ApiVersion(..))
 import Kafkaesque.Message (Message(..), MessageSet)
 import Kafkaesque.Queries (getTopicPartition)
-import Kafkaesque.Request.ApiVersion (ApiVersion(..))
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Request.Parsers
