@@ -14,6 +14,7 @@ module Kafkaesque.Response
   , OffsetListResponseV0(..)
   , TopicMetadataResponseV0(..)
   , OffsetCommitResponseV0(..)
+  , OffsetFetchResponseV0(..)
   , ApiVersionsResponseV0(..)
   , ProduceResponseTopic
   , FetchResponseTopic
@@ -88,6 +89,9 @@ data TopicMetadataResponseV0 =
 
 newtype OffsetCommitResponseV0 =
   OffsetCommitResponseV0 [(String, [(Int32, KafkaError)])]
+
+newtype OffsetFetchResponseV0 =
+  OffsetFetchResponseV0 [(String, [(Int32, Int64, String, KafkaError)])]
 
 data ApiVersionsResponseV0 =
   ApiVersionsResponseV0 KafkaError
@@ -203,6 +207,15 @@ instance KafkaResponse OffsetCommitResponseV0 where
   put (OffsetCommitResponseV0 topics) =
     let putPartition (partitionId, err) =
           putInt32be partitionId *> putKakfaError err
+        putTopic (topicName, parts) =
+          putKafkaString topicName *> putKafkaArray putPartition parts
+    in putKafkaArray putTopic topics
+
+instance KafkaResponse OffsetFetchResponseV0 where
+  put (OffsetFetchResponseV0 topics) =
+    let putPartition (partitionId, offset, metadata, err) =
+          putInt32be partitionId *> putInt64be offset *> putKafkaString metadata *>
+          putKakfaError err
         putTopic (topicName, parts) =
           putKafkaString topicName *> putKafkaArray putPartition parts
     in putKafkaArray putTopic topics

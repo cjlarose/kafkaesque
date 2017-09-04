@@ -19,6 +19,7 @@ import Kafkaesque.Request.Fetch (fetchRequestV0)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaRequestBox(..))
 import Kafkaesque.Request.OffsetCommit (offsetCommitRequestV0)
+import Kafkaesque.Request.OffsetFetch (offsetFetchRequestV0)
 import Kafkaesque.Request.OffsetList (offsetsRequestV0)
 import Kafkaesque.Request.Produce
        (produceRequestV0, produceRequestV1)
@@ -36,6 +37,7 @@ kafkaRequest = do
           (2, 0) -> KR <$> offsetsRequestV0
           (3, 0) -> KR <$> metadataRequestV0
           (8, 0) -> KR <$> offsetCommitRequestV0
+          (9, 0) -> KR <$> offsetFetchRequestV0
           (18, 0) -> KR <$> apiVersionsRequestV0
           _ -> fail "Unknown request type"
   (\r -> (metadata, r)) <$> requestParser

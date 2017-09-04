@@ -27,6 +27,7 @@ library
                      , Kafkaesque.Request.OffsetList
                      , Kafkaesque.Request.TopicMetadata
                      , Kafkaesque.Request.OffsetCommit
+                     , Kafkaesque.Request.OffsetFetch
                      , Kafkaesque.Request.ApiVersions
                      , Kafkaesque.Queries
                      , Kafkaesque.Queries.Log
