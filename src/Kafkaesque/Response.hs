@@ -4,7 +4,7 @@ module Kafkaesque.Response
   , PartitionMetadata(..)
   , TopicMetadata(..)
   , writeResponse
-  , putMessage
+  , putKafkaNullabeBytes
   , ProduceResponseV0(..)
   , ProduceResponseV1(..)
   , FetchResponseV0(..)
@@ -25,7 +25,6 @@ import Data.Int (Int16, Int32, Int64)
 import Data.Serialize.Put
        (Put, putByteString, putWord16be, putWord32be, putWord64be,
         putWord8, runPut)
-import Kafkaesque.Message (Message(..), MessageSet)
 import Kafkaesque.Request.KafkaRequest
        (KafkaResponse, KafkaResponseBox(..), put)
 
@@ -126,12 +125,6 @@ kafkaErrorCode UnknownTopicOrPartition = 3
 
 putKakfaError :: KafkaError -> Put
 putKakfaError = putInt16be . kafkaErrorCode
-
-putMessage :: Message -> Put
-putMessage (Message crc32 magicByte attrs k v) =
-  putWord32be crc32 *> putWord8 magicByte *> putWord8 attrs *>
-  putKafkaNullabeBytes k *>
-  putKafkaNullabeBytes v
 
 putProduceResponseTopic :: ProduceResponseTopic -> Put
 putProduceResponseTopic (name, parts) =

@@ -11,8 +11,7 @@ import Data.List (foldl')
 import Data.Serialize.Put (runPut)
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.Message (Message(..), MessageSet)
-import Kafkaesque.Response (putMessage)
+import Kafkaesque.Message (Message(..), MessageSet, putMessage)
 
 getNextOffsetsForUpdate :: PG.Connection -> Int32 -> Int32 -> IO (Int64, Int64)
 getNextOffsetsForUpdate conn topicId partitionId = do
