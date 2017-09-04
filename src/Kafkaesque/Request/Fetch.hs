@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Kafkaesque.Request.Fetch
   ( fetchRequestV0
@@ -109,12 +110,12 @@ fetchTopic conn (topicName, parts) = do
   return (topicName, partResponses)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> FetchRequestV0 -> IO KafkaResponseBox
+     Pool.Pool PG.Connection -> FetchRequestV0 -> IO FetchResponseV0
 respondToRequest pool (FetchRequestV0 _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
- = KResp <$> (FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic))
+ = FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic)
 
-instance KafkaRequest FetchRequestV0 where
+instance KafkaRequest FetchRequestV0 FetchResponseV0 where
   respond = respondToRequest

@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Kafkaesque.Request.KafkaRequest
   ( KafkaRequest
@@ -22,9 +23,9 @@ data KafkaResponseBox =
   forall a. KafkaResponse a =>
             KResp a
 
-class KafkaRequest a where
-  respond :: Pool.Pool PG.Connection -> a -> IO KafkaResponseBox
+class KafkaRequest a b where
+  respond :: Pool.Pool PG.Connection -> a -> IO b
 
 data KafkaRequestBox =
-  forall a. KafkaRequest a =>
-            KR a
+  forall a b. KafkaRequest a b =>
+    KR a b

@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Kafkaesque.Request.ApiVersions
   ( apiVersionsRequestV0
   ) where
@@ -21,10 +23,10 @@ apiVersionsRequestV0 :: Parser ApiVersionsRequestV0
 apiVersionsRequestV0 = ApiVersionsRequestV0 <$> kafkaArray signedInt16be
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> ApiVersionsRequestV0 -> IO KafkaResponseBox
+     Pool.Pool PG.Connection -> ApiVersionsRequestV0 -> IO ApiVersionsResponseV0
 respondToRequest pool (ApiVersionsRequestV0 apiKeys) =
-  return . KResp $
+  return $
   ApiVersionsResponseV0 NoError [(0, 0, 1), (1, 0, 0), (3, 0, 0), (18, 0, 0)]
 
-instance KafkaRequest ApiVersionsRequestV0 where
+instance KafkaRequest ApiVersionsRequestV0 ApiVersionsResponseV0 where
   respond = respondToRequest

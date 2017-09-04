@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Kafkaesque.Request.OffsetList
   ( offsetsRequestV0
   ) where
@@ -100,11 +102,11 @@ fetchTopicOffsets conn (topicName, partitions) = do
   return (topicName, partitionResponses)
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> OffsetListRequestV0 -> IO KafkaResponseBox
+     Pool.Pool PG.Connection -> OffsetListRequestV0 -> IO OffsetListResponseV0
 respondToRequest pool (OffsetListRequestV0 _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
-  return . KResp $ OffsetListResponseV0 topicResponses
+  return . OffsetListResponseV0 $ topicResponses
 
-instance KafkaRequest OffsetListRequestV0 where
+instance KafkaRequest OffsetListRequestV0 OffsetListResponseV0 where
   respond = respondToRequest

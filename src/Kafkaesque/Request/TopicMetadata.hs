@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Kafkaesque.Request.TopicMetadata
   ( metadataRequestV0
   ) where
@@ -22,7 +24,7 @@ metadataRequestV0 :: Parser TopicMetadataRequestV0
 metadataRequestV0 = TopicMetadataRequestV0 <$> kafkaArray kafkaString
 
 respondToRequest ::
-     Pool.Pool PG.Connection -> TopicMetadataRequestV0 -> IO KafkaResponseBox
+     Pool.Pool PG.Connection -> TopicMetadataRequestV0 -> IO TopicMetadataResponseV0
 respondToRequest pool (TopicMetadataRequestV0 ts) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]
@@ -40,7 +42,7 @@ respondToRequest pool (TopicMetadataRequestV0 ts) = do
           (map makePartitionMetadata [0 .. (partitionCount - 1)])
   topics <- Pool.withResource pool getTopicsWithPartitionCounts
   let topicMetadata = map makeTopicMetadata topics
-  return . KResp $ TopicMetadataResponseV0 brokers topicMetadata
+  return $ TopicMetadataResponseV0 brokers topicMetadata
 
-instance KafkaRequest TopicMetadataRequestV0 where
+instance KafkaRequest TopicMetadataRequestV0 TopicMetadataResponseV0 where
   respond = respondToRequest

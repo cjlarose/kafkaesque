@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Kafkaesque.Request.Produce
   ( produceRequestV0
@@ -166,13 +167,13 @@ respondToRequest pool
               return (partitionId, err, offset))
        return (topic, partResponses))
 
-instance KafkaRequest ProduceRequestV0 where
+instance KafkaRequest ProduceRequestV0 ProduceResponseV0 where
   respond pool (ProduceRequestV0 _ _ topics) = do
     topicResponses <- respondToRequest pool topics
-    return . KResp $ ProduceResponseV0 topicResponses
+    return $ ProduceResponseV0 topicResponses
 
-instance KafkaRequest ProduceRequestV1 where
+instance KafkaRequest ProduceRequestV1 ProduceResponseV1 where
   respond pool (ProduceRequestV1 _ _ topics) = do
     topicResponses <- respondToRequest pool topics
     let throttleTimeMs = 0 :: Int32
-    return . KResp $ ProduceResponseV1 topicResponses throttleTimeMs
+    return $ ProduceResponseV1 topicResponses throttleTimeMs
