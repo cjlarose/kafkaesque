@@ -8,7 +8,7 @@ import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.KafkaError (noError)
 import Kafkaesque.Parsers (kafkaArray, kafkaString)
-import Kafkaesque.Queries (getTopicsWithPartitionCounts)
+import Kafkaesque.Queries (getAllTopicsWithPartitionCounts)
 import Kafkaesque.Request.KafkaRequest
        (KafkaRequest, KafkaResponseBox(..), respond)
 import Kafkaesque.Response
@@ -38,7 +38,7 @@ respondToRequest pool (TopicMetadataRequestV0 ts) = do
           noError
           name
           (map makePartitionMetadata [0 .. (partitionCount - 1)])
-  topics <- Pool.withResource pool getTopicsWithPartitionCounts
+  topics <- Pool.withResource pool getAllTopicsWithPartitionCounts
   let topicMetadata = map makeTopicMetadata topics
   return . KResp $ TopicMetadataResponseV0 brokers topicMetadata
 

@@ -5,7 +5,7 @@ module Kafkaesque.Queries
   ( getTopicId
   , getPartitionCount
   , getTopicPartition
-  , getTopicsWithPartitionCounts
+  , getAllTopicsWithPartitionCounts
   , getNextOffset
   , getEarliestOffset
   ) where
@@ -41,8 +41,8 @@ getTopicPartition conn topicName partitionId
   topicIdRes <- getTopicId conn topicName
   maybe (return Nothing) validatePartition topicIdRes
 
-getTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
-getTopicsWithPartitionCounts conn = do
+getAllTopicsWithPartitionCounts :: PG.Connection -> IO [(String, Int64)]
+getAllTopicsWithPartitionCounts conn = do
   let query =
         [sql| SELECT name, partition_count
               FROM (SELECT topic_id, COUNT(*) AS partition_count
