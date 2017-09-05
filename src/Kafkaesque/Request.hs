@@ -21,13 +21,13 @@ kafkaRequest = do
   metadata@(apiKey, ApiVersion v, _, _) <- requestMessageHeader
   let requestParser =
         case (apiKey, v) of
-          (0, 0) -> KR <$> produceRequestV0
-          (0, 1) -> KR <$> produceRequestV1
-          (1, 0) -> KR <$> fetchRequestV0
-          (2, 0) -> KR <$> offsetsRequestV0
-          (3, 0) -> KR <$> metadataRequestV0
-          (8, 0) -> KR <$> offsetCommitRequestV0
-          (9, 0) -> KR <$> offsetFetchRequestV0
-          (18, 0) -> KR <$> apiVersionsRequestV0
+          (0, 0) -> KReq <$> produceRequestV0
+          (0, 1) -> KReq <$> produceRequestV1
+          (1, 0) -> KReq <$> fetchRequestV0
+          (2, 0) -> KReq <$> offsetsRequestV0
+          (3, 0) -> KReq <$> metadataRequestV0
+          (8, 0) -> KReq <$> offsetCommitRequestV0
+          (9, 0) -> KReq <$> offsetFetchRequestV0
+          (18, 0) -> KReq <$> apiVersionsRequestV0
           _ -> fail "Unknown request type"
   (\r -> (metadata, r)) <$> requestParser

@@ -21,6 +21,6 @@ handleRequest pool request = do
       putResponseBody = putByteString . writeResponse
       putFramedResponse correlationId resp =
         putCorrelationId correlationId *> putResponseBody resp
-      generateResponse ((_, _, correlationId, _), KR req) =
+      generateResponse ((_, _, correlationId, _), KReq req) =
         (runPut . putFramedResponse correlationId) <$> respond pool req
   generateResponse <$> parseResult request

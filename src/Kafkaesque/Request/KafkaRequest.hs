@@ -25,4 +25,4 @@ class KafkaRequest a where
 
 data KafkaRequestBox =
   forall a. KafkaRequest a =>
-            KR a
+            KReq a
