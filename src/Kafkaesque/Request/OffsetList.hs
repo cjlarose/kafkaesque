@@ -8,7 +8,8 @@ import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
+import Kafkaesque.KafkaError
+       (noError, unknownTopicOrPartition, unsupportedForMessageFormat)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries
@@ -67,16 +68,17 @@ fetchTopicPartitionOffsets ::
   -> Int32
   -> OffsetListRequestTimestamp
   -> Int32
-  -> IO [Int64]
+  -> IO (Maybe [Int64])
 fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets = do
   earliest <- getEarliestOffset conn topicId partitionId
   latest <- getNextOffset conn topicId partitionId
   -- TODO handle actual timestamp offsets
-  let offsets =
-        case timestamp of
-          LatestOffset -> [Just latest, earliest]
-          EarliestOffset -> [earliest]
-  return . take (fromIntegral maxOffsets) . catMaybes $ offsets
+  let sendOffsets = Just . take (fromIntegral maxOffsets) . catMaybes
+  return $
+    case timestamp of
+      LatestOffset -> sendOffsets [Just latest, earliest]
+      EarliestOffset -> sendOffsets [earliest]
+      OffsetListTimestamp _ -> Nothing
 
 fetchPartitionOffsets ::
      PG.Connection
@@ -90,7 +92,10 @@ fetchPartitionOffsets conn topicName (partitionId, timestamp, maxOffsets) = do
     Just (topicId, _) -> do
       offsets <-
         fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets
-      return (partitionId, noError, Just offsets)
+      return $
+        case offsets of
+          Nothing -> (partitionId, unsupportedForMessageFormat, Nothing)
+          Just offsets -> (partitionId, noError, Just offsets)
 
 fetchTopicOffsets ::
      PG.Connection -> OffsetListRequestTopic -> IO OffsetListResponseTopic
