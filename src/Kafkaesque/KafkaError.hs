@@ -5,6 +5,7 @@ module Kafkaesque.KafkaError
   , unknownTopicOrPartition
   , unexpectedError
   , kafkaErrorCode
+  , unsupportedForMessageFormat
   ) where
 
 import Data.Int (Int16)
@@ -17,6 +18,8 @@ noError = KafkaError 0
 offsetOutOfRange = KafkaError 1
 
 unknownTopicOrPartition = KafkaError 3
+
+unsupportedForMessageFormat = KafkaError 43
 
 unexpectedError = KafkaError (-1)
 
