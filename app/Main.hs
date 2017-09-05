@@ -54,17 +54,17 @@ runConn pool (sock, _) = do
 mainLoop :: Pool.Pool PG.Connection -> Socket -> IO ()
 mainLoop pool sock = do
   conn <- accept sock
-  forkIO (runConn pool conn)
+  _ <- forkIO (runConn pool conn)
   mainLoop pool sock
 
 createTables :: PG.Connection -> IO ()
 createTables conn = do
-  PG.execute_
+  _ <- PG.execute_
     conn
     [sql| CREATE TABLE IF NOT EXISTS topics
           ( id SERIAL PRIMARY KEY
           , name text NOT NULL UNIQUE ) |]
-  PG.execute_
+  _ <- PG.execute_
     conn
     [sql| CREATE TABLE IF NOT EXISTS partitions
           ( topic_id int NOT NULL REFERENCES topics (id)
@@ -72,7 +72,7 @@ createTables conn = do
           , next_offset bigint NOT NULL
           , total_bytes bigint NOT NULL
           , PRIMARY KEY (topic_id, partition_id) ) |]
-  PG.execute_
+  _ <- PG.execute_
     conn
     [sql| CREATE TABLE IF NOT EXISTS records
           ( topic_id int NOT NULL
@@ -81,10 +81,10 @@ createTables conn = do
           , log_offset bigint NOT NULL
           , byte_offset bigint NOT NULL
           , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions ) |]
-  PG.execute_
+  _ <- PG.execute_
     conn
     [sql| CREATE INDEX ON records (topic_id, partition_id, log_offset) |]
-  PG.execute_
+  _ <- PG.execute_
     conn
     [sql| CREATE INDEX ON records (topic_id, partition_id, byte_offset) |]
   let initialTopics =
@@ -97,7 +97,7 @@ createTables conn = do
   forM_
     initialTopics
     (\(topic, partitionCount) -> do
-       PG.execute
+       _ <- PG.execute
          conn
          "INSERT INTO topics (name) VALUES (?) ON CONFLICT DO NOTHING" $
          PG.Only topic

@@ -46,7 +46,7 @@ insertMessages conn topicId partitionId baseOffset totalBytes messages = do
           messages
   let query =
         "INSERT INTO records (topic_id, partition_id, record, log_offset, byte_offset) VALUES (?, ?, ?, ?, ?)"
-  PG.executeMany conn query $ newTuples []
+  _ <- PG.executeMany conn query $ newTuples []
   return (finalOffset, finalTotalBytes)
 
 updatePartitionOffsets ::
@@ -54,7 +54,7 @@ updatePartitionOffsets ::
 updatePartitionOffsets conn topicId partitionId nextOffset totalBytes = do
   let query =
         "UPDATE partitions SET next_offset = ?, total_bytes = ? WHERE topic_id = ? AND partition_id = ?"
-  PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
+  _ <- PG.execute conn query (nextOffset, totalBytes, topicId, partitionId)
   return ()
 
 writeMessageSet :: PG.Connection -> Int32 -> Int32 -> [Message] -> IO Int64

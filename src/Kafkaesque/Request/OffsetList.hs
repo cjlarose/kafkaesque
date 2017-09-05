@@ -90,10 +90,10 @@ fetchPartitionOffsets conn topicName (partitionId, timestamp, maxOffsets) = do
   case res of
     Nothing -> return (partitionId, unknownTopicOrPartition, Nothing)
     Just (topicId, _) -> do
-      offsets <-
+      offsetRes <-
         fetchTopicPartitionOffsets conn topicId partitionId timestamp maxOffsets
       return $
-        case offsets of
+        case offsetRes of
           Nothing -> (partitionId, unsupportedForMessageFormat, Nothing)
           Just offsets -> (partitionId, noError, Just offsets)
 

@@ -47,7 +47,7 @@ saveOffset conn cgId topicName partitionId offset metadata = do
       value =
         runPut (putWord8 0 *> putInt64be offset *> putKafkaString metadata)
       message = messageV0 (Just key) (Just value)
-  writeMessageSet conn offsetTopicId offsetPartitionId [message]
+  _ <- writeMessageSet conn offsetTopicId offsetPartitionId [message]
   return ()
 
 getOffsetForConsumer ::
@@ -64,13 +64,13 @@ getOffsetForConsumer conn cgId topicName partitionId = do
       valueParser =
         (\_ offset metadata -> (offset, metadata)) <$> word8 0 <*> signedInt64be <*>
         kafkaString
-      extractOffsetAndMetadata (Message _ _ _ _ v) =
-        case v of
+      extractOffsetAndMetadata (Message _ _ _ _ maybeV) =
+        case maybeV of
           Nothing -> Left "Value in offset commit message is empty"
           Just v ->
             case parseOnly valueParser v of
               Left _ -> Left "Cannot parse value of offset commit message"
-              Right val -> Right val
+              Right offsetAndMetadata -> Right offsetAndMetadata
       getLatestOffset =
         listToMaybe .
         map extractOffsetAndMetadata .

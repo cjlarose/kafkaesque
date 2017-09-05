@@ -40,8 +40,8 @@ respondToRequest pool (OffsetFetchRequestV0 cgId topics) = do
             offsetRes <- getOffsetForConsumer conn cgId topicName partitionId
             case offsetRes of
               Nothing -> return (partitionId, -1, "", noError)
-              Just offsetRes ->
-                case offsetRes of
+              Just parseResult ->
+                case parseResult of
                   Left _ -> return (partitionId, -1, "", unexpectedError)
                   Right (offset, metadata) ->
                     return (partitionId, offset, metadata, noError)

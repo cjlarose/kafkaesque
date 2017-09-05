@@ -90,7 +90,7 @@ fetchTopicPartition conn topicName (partitionId, offset, maxBytes) = do
   topicPartitionRes <- getTopicPartition conn topicName partitionId
   maybe
     (return ((partitionId, unknownTopicOrPartition, -1 :: Int64), []))
-    (\(topicId, partitionId) -> do
+    (\(topicId, _) -> do
        nextOffset <- getNextOffset conn topicId partitionId
        highwaterMarkOffset <- getNextOffset conn topicId partitionId
        if offset >= nextOffset
