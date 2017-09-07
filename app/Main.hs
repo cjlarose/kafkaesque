@@ -59,34 +59,39 @@ mainLoop pool sock = do
 
 createTables :: PG.Connection -> IO ()
 createTables conn = do
-  _ <- PG.execute_
-    conn
-    [sql| CREATE TABLE IF NOT EXISTS topics
+  _ <-
+    PG.execute_
+      conn
+      [sql| CREATE TABLE IF NOT EXISTS topics
           ( id SERIAL PRIMARY KEY
           , name text NOT NULL UNIQUE ) |]
-  _ <- PG.execute_
-    conn
-    [sql| CREATE TABLE IF NOT EXISTS partitions
+  _ <-
+    PG.execute_
+      conn
+      [sql| CREATE TABLE IF NOT EXISTS partitions
           ( topic_id int NOT NULL REFERENCES topics (id)
           , partition_id int NOT NULL
           , next_offset bigint NOT NULL
           , total_bytes bigint NOT NULL
           , PRIMARY KEY (topic_id, partition_id) ) |]
-  _ <- PG.execute_
-    conn
-    [sql| CREATE TABLE IF NOT EXISTS records
+  _ <-
+    PG.execute_
+      conn
+      [sql| CREATE TABLE IF NOT EXISTS records
           ( topic_id int NOT NULL
           , partition_id int NOT NULL
           , record bytea NOT NULL
           , log_offset bigint NOT NULL
           , byte_offset bigint NOT NULL
           , FOREIGN KEY (topic_id, partition_id) REFERENCES partitions ) |]
-  _ <- PG.execute_
-    conn
-    [sql| CREATE INDEX ON records (topic_id, partition_id, log_offset) |]
-  _ <- PG.execute_
-    conn
-    [sql| CREATE INDEX ON records (topic_id, partition_id, byte_offset) |]
+  _ <-
+    PG.execute_
+      conn
+      [sql| CREATE INDEX ON records (topic_id, partition_id, log_offset) |]
+  _ <-
+    PG.execute_
+      conn
+      [sql| CREATE INDEX ON records (topic_id, partition_id, byte_offset) |]
   let initialTopics =
         [ ("topic-a", 2)
         , ("topic-b", 4)
@@ -97,9 +102,10 @@ createTables conn = do
   forM_
     initialTopics
     (\(topic, partitionCount) -> do
-       _ <- PG.execute
-         conn
-         "INSERT INTO topics (name) VALUES (?) ON CONFLICT DO NOTHING" $
+       _ <-
+         PG.execute
+           conn
+           "INSERT INTO topics (name) VALUES (?) ON CONFLICT DO NOTHING" $
          PG.Only topic
        [PG.Only topicId] <-
          PG.query conn "SELECT id FROM topics WHERE name = ?" (PG.Only topic) :: IO [PG.Only Int32]
