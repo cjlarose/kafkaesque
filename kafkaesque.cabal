@@ -16,11 +16,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   ghc-options:         -Wall -Werror
-  exposed-modules:     Kafkaesque.Request
-                     , Kafkaesque.Response
+  exposed-modules:     Kafkaesque.Response
                      , Kafkaesque.Message
+                     , Kafkaesque.Serialize
                      , Kafkaesque.KafkaError
-                     , Kafkaesque.ApiVersion
                      , Kafkaesque.Request.KafkaRequest
                      , Kafkaesque.Parsers
                      , Kafkaesque.Request.Produce

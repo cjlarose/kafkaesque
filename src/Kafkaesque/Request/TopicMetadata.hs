@@ -1,5 +1,8 @@
+{-# LANGUAGE GADTs #-}
+
 module Kafkaesque.Request.TopicMetadata
   ( metadataRequestV0
+  , respondToRequestV0
   ) where
 
 import Control.Arrow (second)
@@ -13,16 +16,12 @@ import Kafkaesque.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Queries
        (getAllTopicsWithPartitionCounts, getPartitionCount, getTopicId)
 import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (Broker(..), PartitionMetadata(..), TopicMetadata(..),
-        TopicMetadataResponseV0(..))
+       (APIKeyMetadata, APIVersion0, Broker(..), PartitionMetadata(..),
+        Request(MetadataRequestV0), Response(MetadataResponseV0),
+        TopicMetadata(..))
 
-newtype TopicMetadataRequestV0 =
-  TopicMetadataRequestV0 (Maybe [String])
-
-metadataRequestV0 :: Parser TopicMetadataRequestV0
-metadataRequestV0 = TopicMetadataRequestV0 <$> kafkaArray kafkaString
+metadataRequestV0 :: Parser (Request APIKeyMetadata APIVersion0)
+metadataRequestV0 = MetadataRequestV0 <$> kafkaArray kafkaString
 
 getTopicWithPartitionCount :: PG.Connection -> String -> IO (Maybe Int64)
 getTopicWithPartitionCount conn topicName = do
@@ -37,9 +36,11 @@ getTopicsWithPartitionCounts conn =
        count <- getTopicWithPartitionCount conn topicName
        return (topicName, count))
 
-respondToRequest ::
-     Pool.Pool PG.Connection -> TopicMetadataRequestV0 -> IO KafkaResponseBox
-respondToRequest pool (TopicMetadataRequestV0 requestedTopics) = do
+respondToRequestV0 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyMetadata APIVersion0
+  -> IO (Response APIKeyMetadata APIVersion0)
+respondToRequestV0 pool (MetadataRequestV0 requestedTopics) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]
   let makePartitionMetadata partitionId =
@@ -64,7 +65,4 @@ respondToRequest pool (TopicMetadataRequestV0 requestedTopics) = do
           Just xs -> getTopicsWithPartitionCounts conn xs
   topics <- Pool.withResource pool (`getTopics` requestedTopics)
   let topicMetadata = map makeTopicMetadata topics
-  return . KResp $ TopicMetadataResponseV0 brokers topicMetadata
-
-instance KafkaRequest TopicMetadataRequestV0 where
-  respond = respondToRequest
+  return $ MetadataResponseV0 brokers topicMetadata

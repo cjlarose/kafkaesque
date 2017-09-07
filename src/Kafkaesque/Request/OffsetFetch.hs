@@ -1,9 +1,11 @@
+{-# LANGUAGE GADTs #-}
+
 module Kafkaesque.Request.OffsetFetch
   ( offsetFetchRequestV0
+  , respondToRequestV0
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
-import Data.Int (Int32)
 import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
@@ -14,14 +16,10 @@ import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
 import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response (OffsetFetchResponseV0(..))
+       (APIKeyOffsetFetch, APIVersion0, Request(OffsetFetchRequestV0),
+        Response(OffsetFetchResponseV0))
 
-data OffsetFetchRequestV0 =
-  OffsetFetchRequestV0 String
-                       [(String, [Int32])]
-
-offsetFetchRequestV0 :: Parser OffsetFetchRequestV0
+offsetFetchRequestV0 :: Parser (Request APIKeyOffsetFetch APIVersion0)
 offsetFetchRequestV0 =
   let topic =
         (\a b -> (a, b)) <$> kafkaString <*>
@@ -29,9 +27,11 @@ offsetFetchRequestV0 =
   in OffsetFetchRequestV0 <$> kafkaString <*>
      (fromMaybe [] <$> kafkaArray topic)
 
-respondToRequest ::
-     Pool.Pool PG.Connection -> OffsetFetchRequestV0 -> IO OffsetFetchResponseV0
-respondToRequest pool (OffsetFetchRequestV0 cgId topics) = do
+respondToRequestV0 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyOffsetFetch APIVersion0
+  -> IO (Response APIKeyOffsetFetch APIVersion0)
+respondToRequestV0 pool (OffsetFetchRequestV0 cgId topics) = do
   let getPartitionResponse conn topicName partitionId = do
         topicPartitionRes <- getTopicPartition conn topicName partitionId
         case topicPartitionRes of
@@ -51,6 +51,3 @@ respondToRequest pool (OffsetFetchRequestV0 cgId topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (getTopicResponse conn) topics)
   return . OffsetFetchResponseV0 $ topicResponses
-
-instance KafkaRequest OffsetFetchRequestV0 where
-  respond pool req = KResp <$> respondToRequest pool req

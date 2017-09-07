@@ -1,7 +1,9 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Kafkaesque.Request.Fetch
   ( fetchRequestV0
+  , respondToRequestV0
   ) where
 
 import Control.Monad (forM)
@@ -19,19 +21,9 @@ import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (FetchResponsePartition, FetchResponseTopic, FetchResponseV0(..))
-
-type FetchRequestPartition = (Int32, Int64, Int32)
-
-type FetchRequestTopic = (String, [FetchRequestPartition])
-
-data FetchRequestV0 =
-  FetchRequestV0 Int32
-                 Int32
-                 Int32
-                 [FetchRequestTopic]
+       (APIKeyFetch, APIVersion0, FetchRequestPartition,
+        FetchRequestTopic, FetchResponsePartition, FetchResponseTopic,
+        Request(..), Response(..))
 
 fetchRequestPartition :: Parser FetchRequestPartition
 fetchRequestPartition =
@@ -42,7 +34,7 @@ fetchRequestTopic =
   (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray fetchRequestPartition)
 
-fetchRequestV0 :: Parser FetchRequestV0
+fetchRequestV0 :: Parser (Request APIKeyFetch APIVersion0)
 fetchRequestV0 =
   FetchRequestV0 <$> signedInt32be <*> signedInt32be <*> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray fetchRequestTopic)
@@ -107,13 +99,12 @@ fetchTopic conn (topicName, parts) = do
   partResponses <- forM parts (fetchTopicPartition conn topicName)
   return (topicName, partResponses)
 
-respondToRequest ::
-     Pool.Pool PG.Connection -> FetchRequestV0 -> IO KafkaResponseBox
-respondToRequest pool (FetchRequestV0 _ _ _ ts)
+respondToRequestV0 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyFetch APIVersion0
+  -> IO (Response APIKeyFetch APIVersion0)
+respondToRequestV0 pool (FetchRequestV0 _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
   -- TODO: Fetch topicIds in bulk
- = KResp <$> (FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic))
-
-instance KafkaRequest FetchRequestV0 where
-  respond = respondToRequest
+ = FetchResponseV0 <$> Pool.withResource pool (forM ts . fetchTopic)

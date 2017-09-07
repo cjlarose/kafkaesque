@@ -8,17 +8,17 @@ module Kafkaesque.Parsers
   , kafkaNullabeBytes
   , kafkaArray
   , requestMessageHeader
+  , kafkaRequest
   , RequestMetadata
   ) where
 
 import Data.Attoparsec.Binary
        (anyWord16be, anyWord32be, anyWord64be)
-import Data.Attoparsec.ByteString (Parser, count, take)
+import Data.Attoparsec.ByteString
+       (Parser, count, take, takeByteString)
 import Data.ByteString (ByteString)
 import Data.ByteString.UTF8 (toString)
 import Data.Int (Int16, Int32, Int64)
-
-import Kafkaesque.ApiVersion (ApiVersion(..))
 
 signedInt16be :: Parser Int16
 signedInt16be = fromIntegral <$> anyWord16be
@@ -64,13 +64,17 @@ kafkaArray p = do
     then return Nothing
     else Just <$> count (fromIntegral len) p
 
-type RequestMetadata = (Int16, ApiVersion, Int32, Maybe String)
+type RequestMetadata = (Int16, Int16, Int32, Maybe String)
 
 requestMessageHeader :: Parser RequestMetadata
 requestMessageHeader =
   (\apiKey apiVersion correlationId clientId ->
-     (apiKey, ApiVersion . fromIntegral $ apiVersion, correlationId, clientId)) <$>
+     (apiKey, apiVersion, correlationId, clientId)) <$>
   signedInt16be <*>
   signedInt16be <*>
   signedInt32be <*>
   kafkaNullableString
+
+kafkaRequest :: Parser (RequestMetadata, ByteString)
+kafkaRequest =
+  (\header body -> (header, body)) <$> requestMessageHeader <*> takeByteString

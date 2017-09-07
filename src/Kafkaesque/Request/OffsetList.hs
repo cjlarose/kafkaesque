@@ -1,5 +1,8 @@
+{-# LANGUAGE GADTs #-}
+
 module Kafkaesque.Request.OffsetList
   ( offsetsRequestV0
+  , respondToRequestV0
   ) where
 
 import Data.Attoparsec.ByteString (Parser)
@@ -15,23 +18,12 @@ import Kafkaesque.Parsers
 import Kafkaesque.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (OffsetListResponsePartition, OffsetListResponseTopic,
-        OffsetListResponseV0(..))
-
-data OffsetListRequestTimestamp
-  = LatestOffset
-  | EarliestOffset
-  | OffsetListTimestamp Int64
-
-type OffsetListRequestPartition = (Int32, OffsetListRequestTimestamp, Int32)
-
-type OffsetListRequestTopic = (String, [OffsetListRequestPartition])
-
-data OffsetListRequestV0 =
-  OffsetListRequestV0 Int32
-                      [OffsetListRequestTopic]
+       (APIKeyOffsets, APIVersion0, OffsetListRequestPartition,
+        OffsetListRequestTimestamp(EarliestOffset, LatestOffset,
+                                   OffsetListTimestamp),
+        OffsetListRequestTopic, OffsetListResponsePartition,
+        OffsetListResponseTopic, Request(OffsetsRequestV0),
+        Response(OffsetsResponseV0))
 
 makeTimestamp :: Int64 -> Maybe OffsetListRequestTimestamp
 makeTimestamp (-1) = Just LatestOffset
@@ -57,9 +49,9 @@ offsetsRequestTopic =
   (\t xs -> (t, xs)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestPartition)
 
-offsetsRequestV0 :: Parser OffsetListRequestV0
+offsetsRequestV0 :: Parser (Request APIKeyOffsets APIVersion0)
 offsetsRequestV0 =
-  OffsetListRequestV0 <$> signedInt32be <*>
+  OffsetsRequestV0 <$> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
 
 fetchTopicPartitionOffsets ::
@@ -103,12 +95,11 @@ fetchTopicOffsets conn (topicName, partitions) = do
   partitionResponses <- mapM (fetchPartitionOffsets conn topicName) partitions
   return (topicName, partitionResponses)
 
-respondToRequest ::
-     Pool.Pool PG.Connection -> OffsetListRequestV0 -> IO KafkaResponseBox
-respondToRequest pool (OffsetListRequestV0 _ topics) = do
+respondToRequestV0 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyOffsets APIVersion0
+  -> IO (Response APIKeyOffsets APIVersion0)
+respondToRequestV0 pool (OffsetsRequestV0 _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
-  return . KResp $ OffsetListResponseV0 topicResponses
-
-instance KafkaRequest OffsetListRequestV0 where
-  respond = respondToRequest
+  return $ OffsetsResponseV0 topicResponses

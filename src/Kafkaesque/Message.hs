@@ -1,8 +1,8 @@
 module Kafkaesque.Message
   ( Message(..)
   , MessageSet
-  , putMessage
   , messageParser
+  , putMessage
   , messageV0
   ) where
 
@@ -14,8 +14,7 @@ import Data.Int (Int64)
 import Data.Serialize.Put (Put, putWord32be, putWord8, runPut)
 import Data.Word (Word32, Word8)
 import Kafkaesque.Parsers (kafkaNullabeBytes)
-
-import Kafkaesque.Response (putKafkaNullabeBytes)
+import Kafkaesque.Serialize (putKafkaNullabeBytes)
 
 data Message =
   Message Word32

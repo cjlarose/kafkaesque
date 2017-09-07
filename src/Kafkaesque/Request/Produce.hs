@@ -1,6 +1,10 @@
+{-# LANGUAGE GADTs #-}
+
 module Kafkaesque.Request.Produce
   ( produceRequestV0
   , produceRequestV1
+  , respondToRequestV0
+  , respondToRequestV1
   ) where
 
 import Data.Attoparsec.ByteString (Parser, many', parseOnly, take)
@@ -10,34 +14,16 @@ import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
-import Kafkaesque.Message (Message(..), MessageSet, messageParser)
+import Kafkaesque.Message (Message, MessageSet, messageParser)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt16be, signedInt32be,
         signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest
-       (KafkaRequest, KafkaResponseBox(..), respond)
-import Kafkaesque.Response
-       (ProduceResponseTopic, ProduceResponseV0(..),
-        ProduceResponseV1(..))
-
-newtype TimeoutMs =
-  TimeoutMs Int32
-
-type PartitionData = (Int32, MessageSet)
-
-type TopicData = (String, [PartitionData])
-
-data ProduceRequestV0 =
-  ProduceRequestV0 Int16
-                   TimeoutMs
-                   [TopicData]
-
-data ProduceRequestV1 =
-  ProduceRequestV1 Int16
-                   TimeoutMs
-                   [TopicData]
+       (APIKeyProduce, APIVersion0, APIVersion1, PartitionData,
+        ProduceResponseTopic, Request(..), Response(..), TimeoutMs(..),
+        TopicData)
 
 produceRequest :: Parser (Int16, TimeoutMs, [TopicData])
 produceRequest =
@@ -61,12 +47,12 @@ produceRequest =
   in (\a b c -> (a, b, c)) <$> signedInt16be <*> (TimeoutMs <$> signedInt32be) <*>
      (fromMaybe [] <$> kafkaArray topicData)
 
-produceRequestV0 :: Parser ProduceRequestV0
+produceRequestV0 :: Parser (Request APIKeyProduce APIVersion0)
 produceRequestV0 =
   (\(acks, timeout, topics) -> ProduceRequestV0 acks timeout topics) <$>
   produceRequest
 
-produceRequestV1 :: Parser ProduceRequestV1
+produceRequestV1 :: Parser (Request APIKeyProduce APIVersion1)
 produceRequestV1 =
   (\(acks, timeout, topics) -> ProduceRequestV1 acks timeout topics) <$>
   produceRequest
@@ -96,13 +82,19 @@ respondToRequest pool
         return (topicName, partResponses)
   mapM getTopicResponse
 
-instance KafkaRequest ProduceRequestV0 where
-  respond pool (ProduceRequestV0 _ _ topics) = do
-    topicResponses <- respondToRequest pool topics
-    return . KResp $ ProduceResponseV0 topicResponses
+respondToRequestV0 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyProduce APIVersion0
+  -> IO (Response APIKeyProduce APIVersion0)
+respondToRequestV0 pool (ProduceRequestV0 _ _ topics) = do
+  topicResponses <- respondToRequest pool topics
+  return $ ProduceResponseV0 topicResponses
 
-instance KafkaRequest ProduceRequestV1 where
-  respond pool (ProduceRequestV1 _ _ topics) = do
-    topicResponses <- respondToRequest pool topics
-    let throttleTimeMs = 0 :: Int32
-    return . KResp $ ProduceResponseV1 topicResponses throttleTimeMs
+respondToRequestV1 ::
+     Pool.Pool PG.Connection
+  -> Request APIKeyProduce APIVersion1
+  -> IO (Response APIKeyProduce APIVersion1)
+respondToRequestV1 pool (ProduceRequestV1 _ _ topics) = do
+  topicResponses <- respondToRequest pool topics
+  let throttleTimeMs = 0 :: Int32
+  return $ ProduceResponseV1 topicResponses throttleTimeMs
