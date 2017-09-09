@@ -11,15 +11,15 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiKey (OffsetCommit)
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (saveOffset)
 import Kafkaesque.Request.KafkaRequest
-       (APIKeyOffsetCommit, APIVersion0, OffsetCommitPartitionData,
-        OffsetCommitTopicData, Request(OffsetCommitRequestV0),
-        Response(OffsetCommitResponseV0))
+       (APIVersion0, OffsetCommitPartitionData, OffsetCommitTopicData,
+        Request(OffsetCommitRequestV0), Response(OffsetCommitResponseV0))
 
 offsetCommitPartition :: Parser OffsetCommitPartitionData
 offsetCommitPartition =
@@ -33,15 +33,15 @@ offsetCommitTopic =
   (\a b -> (a, b)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetCommitPartition)
 
-offsetCommitRequestV0 :: Parser (Request APIKeyOffsetCommit APIVersion0)
+offsetCommitRequestV0 :: Parser (Request OffsetCommit APIVersion0)
 offsetCommitRequestV0 =
   OffsetCommitRequestV0 <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetCommitTopic)
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyOffsetCommit APIVersion0
-  -> IO (Response APIKeyOffsetCommit APIVersion0)
+  -> Request OffsetCommit APIVersion0
+  -> IO (Response OffsetCommit APIVersion0)
 respondToRequestV0 pool (OffsetCommitRequestV0 cgId topics) = do
   let getResponsePartition conn topicName (partitionId, offset, metadata) = do
         topicRes <- getTopicPartition conn topicName partitionId

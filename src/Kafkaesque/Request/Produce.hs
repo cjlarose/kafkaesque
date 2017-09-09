@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiKey (Produce)
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Message (Message, MessageSet, messageParser)
 import Kafkaesque.Parsers
@@ -21,9 +22,8 @@ import Kafkaesque.Parsers
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest
-       (APIKeyProduce, APIVersion0, APIVersion1, PartitionData,
-        ProduceResponseTopic, Request(..), Response(..), TimeoutMs(..),
-        TopicData)
+       (APIVersion0, APIVersion1, PartitionData, ProduceResponseTopic,
+        Request(..), Response(..), TimeoutMs(..), TopicData)
 
 produceRequest :: Parser (Int16, TimeoutMs, [TopicData])
 produceRequest =
@@ -47,12 +47,12 @@ produceRequest =
   in (\a b c -> (a, b, c)) <$> signedInt16be <*> (TimeoutMs <$> signedInt32be) <*>
      (fromMaybe [] <$> kafkaArray topicData)
 
-produceRequestV0 :: Parser (Request APIKeyProduce APIVersion0)
+produceRequestV0 :: Parser (Request Produce APIVersion0)
 produceRequestV0 =
   (\(acks, timeout, topics) -> ProduceRequestV0 acks timeout topics) <$>
   produceRequest
 
-produceRequestV1 :: Parser (Request APIKeyProduce APIVersion1)
+produceRequestV1 :: Parser (Request Produce APIVersion1)
 produceRequestV1 =
   (\(acks, timeout, topics) -> ProduceRequestV1 acks timeout topics) <$>
   produceRequest
@@ -84,16 +84,16 @@ respondToRequest pool
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyProduce APIVersion0
-  -> IO (Response APIKeyProduce APIVersion0)
+  -> Request Produce APIVersion0
+  -> IO (Response Produce APIVersion0)
 respondToRequestV0 pool (ProduceRequestV0 _ _ topics) = do
   topicResponses <- respondToRequest pool topics
   return $ ProduceResponseV0 topicResponses
 
 respondToRequestV1 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyProduce APIVersion1
-  -> IO (Response APIKeyProduce APIVersion1)
+  -> Request Produce APIVersion1
+  -> IO (Response Produce APIVersion1)
 respondToRequestV1 pool (ProduceRequestV1 _ _ topics) = do
   topicResponses <- respondToRequest pool topics
   let throttleTimeMs = 0 :: Int32

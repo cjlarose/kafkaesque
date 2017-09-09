@@ -10,16 +10,17 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiKey (OffsetFetch)
 import Kafkaesque.KafkaError
        (noError, unexpectedError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
 import Kafkaesque.Request.KafkaRequest
-       (APIKeyOffsetFetch, APIVersion0, Request(OffsetFetchRequestV0),
+       (APIVersion0, Request(OffsetFetchRequestV0),
         Response(OffsetFetchResponseV0))
 
-offsetFetchRequestV0 :: Parser (Request APIKeyOffsetFetch APIVersion0)
+offsetFetchRequestV0 :: Parser (Request OffsetFetch APIVersion0)
 offsetFetchRequestV0 =
   let topic =
         (\a b -> (a, b)) <$> kafkaString <*>
@@ -29,8 +30,8 @@ offsetFetchRequestV0 =
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyOffsetFetch APIVersion0
-  -> IO (Response APIKeyOffsetFetch APIVersion0)
+  -> Request OffsetFetch APIVersion0
+  -> IO (Response OffsetFetch APIVersion0)
 respondToRequestV0 pool (OffsetFetchRequestV0 cgId topics) = do
   let getPartitionResponse conn topicName partitionId = do
         topicPartitionRes <- getTopicPartition conn topicName partitionId

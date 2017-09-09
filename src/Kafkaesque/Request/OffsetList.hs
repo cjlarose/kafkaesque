@@ -11,6 +11,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
+import Kafkaesque.ApiKey (Offsets)
 import Kafkaesque.KafkaError
        (noError, unknownTopicOrPartition, unsupportedForMessageFormat)
 import Kafkaesque.Parsers
@@ -18,7 +19,7 @@ import Kafkaesque.Parsers
 import Kafkaesque.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (APIKeyOffsets, APIVersion0, OffsetListRequestPartition,
+       (APIVersion0, OffsetListRequestPartition,
         OffsetListRequestTimestamp(EarliestOffset, LatestOffset,
                                    OffsetListTimestamp),
         OffsetListRequestTopic, OffsetListResponsePartition,
@@ -49,7 +50,7 @@ offsetsRequestTopic =
   (\t xs -> (t, xs)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestPartition)
 
-offsetsRequestV0 :: Parser (Request APIKeyOffsets APIVersion0)
+offsetsRequestV0 :: Parser (Request Offsets APIVersion0)
 offsetsRequestV0 =
   OffsetsRequestV0 <$> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
@@ -97,8 +98,8 @@ fetchTopicOffsets conn (topicName, partitions) = do
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyOffsets APIVersion0
-  -> IO (Response APIKeyOffsets APIVersion0)
+  -> Request Offsets APIVersion0
+  -> IO (Response Offsets APIVersion0)
 respondToRequestV0 pool (OffsetsRequestV0 _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)

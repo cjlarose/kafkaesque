@@ -15,15 +15,16 @@ import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ (sql)
 
 import Data.Attoparsec.ByteString (Parser)
+import Kafkaesque.ApiKey (Fetch)
 import Kafkaesque.KafkaError
        (noError, offsetOutOfRange, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Queries (getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (APIKeyFetch, APIVersion0, FetchRequestPartition,
-        FetchRequestTopic, FetchResponsePartition, FetchResponseTopic,
-        Request(..), Response(..))
+       (APIVersion0, FetchRequestPartition, FetchRequestTopic,
+        FetchResponsePartition, FetchResponseTopic, Request(..),
+        Response(..))
 
 fetchRequestPartition :: Parser FetchRequestPartition
 fetchRequestPartition =
@@ -34,7 +35,7 @@ fetchRequestTopic =
   (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray fetchRequestPartition)
 
-fetchRequestV0 :: Parser (Request APIKeyFetch APIVersion0)
+fetchRequestV0 :: Parser (Request Fetch APIVersion0)
 fetchRequestV0 =
   FetchRequestV0 <$> signedInt32be <*> signedInt32be <*> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray fetchRequestTopic)
@@ -101,8 +102,8 @@ fetchTopic conn (topicName, parts) = do
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request APIKeyFetch APIVersion0
-  -> IO (Response APIKeyFetch APIVersion0)
+  -> Request Fetch APIVersion0
+  -> IO (Response Fetch APIVersion0)
 respondToRequestV0 pool (FetchRequestV0 _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes
