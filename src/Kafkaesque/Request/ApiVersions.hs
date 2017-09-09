@@ -9,9 +9,9 @@ import Data.Attoparsec.ByteString (Parser)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.ApiKey (ApiVersions)
 import Kafkaesque.KafkaError (noError)
 import Kafkaesque.Parsers (kafkaArray, signedInt16be)
+import Kafkaesque.Protocol.ApiKey (ApiVersions)
 import Kafkaesque.Request.KafkaRequest
        (APIVersion0, Request(ApiVersionsRequestV0),
         Response(ApiVersionsResponseV0))

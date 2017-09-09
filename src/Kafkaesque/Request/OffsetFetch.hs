@@ -10,10 +10,10 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.ApiKey (OffsetFetch)
 import Kafkaesque.KafkaError
        (noError, unexpectedError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
+import Kafkaesque.Protocol.ApiKey (OffsetFetch)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
 import Kafkaesque.Request.KafkaRequest

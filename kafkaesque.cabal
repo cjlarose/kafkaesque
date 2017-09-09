@@ -19,7 +19,7 @@ library
   exposed-modules:     Kafkaesque.Response
                      , Kafkaesque.Message
                      , Kafkaesque.Serialize
-                     , Kafkaesque.ApiKey
+                     , Kafkaesque.Protocol.ApiKey
                      , Kafkaesque.KafkaError
                      , Kafkaesque.Request.KafkaRequest
                      , Kafkaesque.Parsers

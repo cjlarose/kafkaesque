@@ -13,12 +13,12 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.ApiKey (Produce)
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Message (Message, MessageSet, messageParser)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt16be, signedInt32be,
         signedInt64be)
+import Kafkaesque.Protocol.ApiKey (Produce)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest

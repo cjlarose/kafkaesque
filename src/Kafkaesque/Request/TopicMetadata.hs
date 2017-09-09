@@ -11,9 +11,9 @@ import Data.Int (Int64)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.ApiKey (Metadata)
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString)
+import Kafkaesque.Protocol.ApiKey (Metadata)
 import Kafkaesque.Queries
        (getAllTopicsWithPartitionCounts, getPartitionCount, getTopicId)
 import Kafkaesque.Request.KafkaRequest

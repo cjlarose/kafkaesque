@@ -11,10 +11,10 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as PG
 
-import Kafkaesque.ApiKey (OffsetCommit)
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
+import Kafkaesque.Protocol.ApiKey (OffsetCommit)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (saveOffset)
 import Kafkaesque.Request.KafkaRequest

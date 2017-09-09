@@ -1,4 +1,4 @@
-module Kafkaesque.ApiKey
+module Kafkaesque.Protocol.ApiKey
   ( Produce
   , Fetch
   , Offsets

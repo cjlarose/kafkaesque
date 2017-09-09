@@ -27,11 +27,11 @@ module Kafkaesque.Request.KafkaRequest
 
 import Data.ByteString (ByteString)
 import Data.Int (Int16, Int32, Int64)
-import Kafkaesque.ApiKey
-       (ApiVersions, Fetch, Metadata, OffsetCommit, OffsetFetch, Offsets,
-        Produce)
 import Kafkaesque.KafkaError (KafkaError)
 import Kafkaesque.Message (MessageSet)
+import Kafkaesque.Protocol.ApiKey
+       (ApiVersions, Fetch, Metadata, OffsetCommit, OffsetFetch, Offsets,
+        Produce)
 
 data APIVersion0
 
