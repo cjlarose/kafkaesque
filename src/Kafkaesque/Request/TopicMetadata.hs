@@ -14,14 +14,14 @@ import qualified Database.PostgreSQL.Simple as PG
 import Kafkaesque.KafkaError (noError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString)
 import Kafkaesque.Protocol.ApiKey (Metadata)
+import Kafkaesque.Protocol.ApiVersion (V0)
 import Kafkaesque.Queries
        (getAllTopicsWithPartitionCounts, getPartitionCount, getTopicId)
 import Kafkaesque.Request.KafkaRequest
-       (APIVersion0, Broker(..), PartitionMetadata(..),
-        Request(MetadataRequestV0), Response(MetadataResponseV0),
-        TopicMetadata(..))
+       (Broker(..), PartitionMetadata(..), Request(MetadataRequestV0),
+        Response(MetadataResponseV0), TopicMetadata(..))
 
-metadataRequestV0 :: Parser (Request Metadata APIVersion0)
+metadataRequestV0 :: Parser (Request Metadata V0)
 metadataRequestV0 = MetadataRequestV0 <$> kafkaArray kafkaString
 
 getTopicWithPartitionCount :: PG.Connection -> String -> IO (Maybe Int64)
@@ -38,9 +38,7 @@ getTopicsWithPartitionCounts conn =
        return (topicName, count))
 
 respondToRequestV0 ::
-     Pool.Pool PG.Connection
-  -> Request Metadata APIVersion0
-  -> IO (Response Metadata APIVersion0)
+     Pool.Pool PG.Connection -> Request Metadata V0 -> IO (Response Metadata V0)
 respondToRequestV0 pool (MetadataRequestV0 requestedTopics) = do
   let brokerNodeId = 42
   let brokers = [Broker brokerNodeId "localhost" 9092]

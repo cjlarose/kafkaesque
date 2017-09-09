@@ -20,11 +20,11 @@ import Kafkaesque.KafkaError
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Protocol.ApiKey (Fetch)
+import Kafkaesque.Protocol.ApiVersion (V0)
 import Kafkaesque.Queries (getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (APIVersion0, FetchRequestPartition, FetchRequestTopic,
-        FetchResponsePartition, FetchResponseTopic, Request(..),
-        Response(..))
+       (FetchRequestPartition, FetchRequestTopic, FetchResponsePartition,
+        FetchResponseTopic, Request(..), Response(..))
 
 fetchRequestPartition :: Parser FetchRequestPartition
 fetchRequestPartition =
@@ -35,7 +35,7 @@ fetchRequestTopic =
   (\topic partitions -> (topic, partitions)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray fetchRequestPartition)
 
-fetchRequestV0 :: Parser (Request Fetch APIVersion0)
+fetchRequestV0 :: Parser (Request Fetch V0)
 fetchRequestV0 =
   FetchRequestV0 <$> signedInt32be <*> signedInt32be <*> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray fetchRequestTopic)
@@ -101,9 +101,7 @@ fetchTopic conn (topicName, parts) = do
   return (topicName, partResponses)
 
 respondToRequestV0 ::
-     Pool.Pool PG.Connection
-  -> Request Fetch APIVersion0
-  -> IO (Response Fetch APIVersion0)
+     Pool.Pool PG.Connection -> Request Fetch V0 -> IO (Response Fetch V0)
 respondToRequestV0 pool (FetchRequestV0 _ _ _ ts)
   -- TODO: Respect maxWaitTime
   -- TODO: Respect minBytes

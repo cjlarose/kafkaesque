@@ -19,11 +19,12 @@ import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt16be, signedInt32be,
         signedInt64be)
 import Kafkaesque.Protocol.ApiKey (Produce)
+import Kafkaesque.Protocol.ApiVersion (V0, V1)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.Log (writeMessageSet)
 import Kafkaesque.Request.KafkaRequest
-       (APIVersion0, APIVersion1, PartitionData, ProduceResponseTopic,
-        Request(..), Response(..), TimeoutMs(..), TopicData)
+       (PartitionData, ProduceResponseTopic, Request(..), Response(..),
+        TimeoutMs(..), TopicData)
 
 produceRequest :: Parser (Int16, TimeoutMs, [TopicData])
 produceRequest =
@@ -47,12 +48,12 @@ produceRequest =
   in (\a b c -> (a, b, c)) <$> signedInt16be <*> (TimeoutMs <$> signedInt32be) <*>
      (fromMaybe [] <$> kafkaArray topicData)
 
-produceRequestV0 :: Parser (Request Produce APIVersion0)
+produceRequestV0 :: Parser (Request Produce V0)
 produceRequestV0 =
   (\(acks, timeout, topics) -> ProduceRequestV0 acks timeout topics) <$>
   produceRequest
 
-produceRequestV1 :: Parser (Request Produce APIVersion1)
+produceRequestV1 :: Parser (Request Produce V1)
 produceRequestV1 =
   (\(acks, timeout, topics) -> ProduceRequestV1 acks timeout topics) <$>
   produceRequest
@@ -83,17 +84,13 @@ respondToRequest pool
   mapM getTopicResponse
 
 respondToRequestV0 ::
-     Pool.Pool PG.Connection
-  -> Request Produce APIVersion0
-  -> IO (Response Produce APIVersion0)
+     Pool.Pool PG.Connection -> Request Produce V0 -> IO (Response Produce V0)
 respondToRequestV0 pool (ProduceRequestV0 _ _ topics) = do
   topicResponses <- respondToRequest pool topics
   return $ ProduceResponseV0 topicResponses
 
 respondToRequestV1 ::
-     Pool.Pool PG.Connection
-  -> Request Produce APIVersion1
-  -> IO (Response Produce APIVersion1)
+     Pool.Pool PG.Connection -> Request Produce V1 -> IO (Response Produce V1)
 respondToRequestV1 pool (ProduceRequestV1 _ _ topics) = do
   topicResponses <- respondToRequest pool topics
   let throttleTimeMs = 0 :: Int32

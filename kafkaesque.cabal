@@ -20,6 +20,7 @@ library
                      , Kafkaesque.Message
                      , Kafkaesque.Serialize
                      , Kafkaesque.Protocol.ApiKey
+                     , Kafkaesque.Protocol.ApiVersion
                      , Kafkaesque.KafkaError
                      , Kafkaesque.Request.KafkaRequest
                      , Kafkaesque.Parsers

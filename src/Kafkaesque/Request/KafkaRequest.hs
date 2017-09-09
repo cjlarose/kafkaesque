@@ -1,9 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
 module Kafkaesque.Request.KafkaRequest
-  ( APIVersion0
-  , APIVersion1
-  , Request(..)
+  ( Request(..)
   , Response(..)
   , TimeoutMs(..)
   , TopicData
@@ -32,10 +30,7 @@ import Kafkaesque.Message (MessageSet)
 import Kafkaesque.Protocol.ApiKey
        (ApiVersions, Fetch, Metadata, OffsetCommit, OffsetFetch, Offsets,
         Produce)
-
-data APIVersion0
-
-data APIVersion1
+import Kafkaesque.Protocol.ApiVersion (V0, V1)
 
 -- Produce
 newtype TimeoutMs =
@@ -84,24 +79,17 @@ type OffsetCommitPartitionData = (Int32, Int64, String)
 type OffsetCommitTopicData = (String, [OffsetCommitPartitionData])
 
 data Request k v where
-  ProduceRequestV0
-    :: Int16 -> TimeoutMs -> [TopicData] -> Request Produce APIVersion0
-  ProduceRequestV1
-    :: Int16 -> TimeoutMs -> [TopicData] -> Request Produce APIVersion1
+  ProduceRequestV0 :: Int16 -> TimeoutMs -> [TopicData] -> Request Produce V0
+  ProduceRequestV1 :: Int16 -> TimeoutMs -> [TopicData] -> Request Produce V1
   FetchRequestV0
-    :: Int32
-    -> Int32
-    -> Int32
-    -> [FetchRequestTopic]
-    -> Request Fetch APIVersion0
-  OffsetsRequestV0
-    :: Int32 -> [OffsetListRequestTopic] -> Request Offsets APIVersion0
-  MetadataRequestV0 :: Maybe [String] -> Request Metadata APIVersion0
+    :: Int32 -> Int32 -> Int32 -> [FetchRequestTopic] -> Request Fetch V0
+  OffsetsRequestV0 :: Int32 -> [OffsetListRequestTopic] -> Request Offsets V0
+  MetadataRequestV0 :: Maybe [String] -> Request Metadata V0
   OffsetCommitRequestV0
-    :: String -> [OffsetCommitTopicData] -> Request OffsetCommit APIVersion0
+    :: String -> [OffsetCommitTopicData] -> Request OffsetCommit V0
   OffsetFetchRequestV0
-    :: String -> [(String, [Int32])] -> Request OffsetFetch APIVersion0
-  ApiVersionsRequestV0 :: Maybe [Int16] -> Request ApiVersions APIVersion0
+    :: String -> [(String, [Int32])] -> Request OffsetFetch V0
+  ApiVersionsRequestV0 :: Maybe [Int16] -> Request ApiVersions V0
 
 -- Produce
 type ProduceResponsePartition = (Int32, KafkaError, Int64)
@@ -121,17 +109,15 @@ type OffsetListResponsePartition = (Int32, KafkaError, Maybe [Int64])
 type OffsetListResponseTopic = (String, [OffsetListResponsePartition])
 
 data Response k v where
-  ProduceResponseV0 :: [ProduceResponseTopic] -> Response Produce APIVersion0
-  ProduceResponseV1
-    :: [ProduceResponseTopic] -> Int32 -> Response Produce APIVersion1
-  FetchResponseV0 :: [FetchResponseTopic] -> Response Fetch APIVersion0
-  OffsetsResponseV0 :: [OffsetListResponseTopic] -> Response Offsets APIVersion0
-  MetadataResponseV0
-    :: [Broker] -> [TopicMetadata] -> Response Metadata APIVersion0
+  ProduceResponseV0 :: [ProduceResponseTopic] -> Response Produce V0
+  ProduceResponseV1 :: [ProduceResponseTopic] -> Int32 -> Response Produce V1
+  FetchResponseV0 :: [FetchResponseTopic] -> Response Fetch V0
+  OffsetsResponseV0 :: [OffsetListResponseTopic] -> Response Offsets V0
+  MetadataResponseV0 :: [Broker] -> [TopicMetadata] -> Response Metadata V0
   OffsetCommitResponseV0
-    :: [(String, [(Int32, KafkaError)])] -> Response OffsetCommit APIVersion0
+    :: [(String, [(Int32, KafkaError)])] -> Response OffsetCommit V0
   OffsetFetchResponseV0
     :: [(String, [(Int32, Int64, String, KafkaError)])]
-    -> Response OffsetFetch APIVersion0
+    -> Response OffsetFetch V0
   ApiVersionsResponseV0
-    :: KafkaError -> [(Int16, Int16, Int16)] -> Response ApiVersions APIVersion0
+    :: KafkaError -> [(Int16, Int16, Int16)] -> Response ApiVersions V0

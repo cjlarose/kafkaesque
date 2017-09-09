@@ -14,13 +14,13 @@ import Kafkaesque.KafkaError
        (noError, unexpectedError, unknownTopicOrPartition)
 import Kafkaesque.Parsers (kafkaArray, kafkaString, signedInt32be)
 import Kafkaesque.Protocol.ApiKey (OffsetFetch)
+import Kafkaesque.Protocol.ApiVersion (V0)
 import Kafkaesque.Queries (getTopicPartition)
 import Kafkaesque.Queries.ConsumerOffsets (getOffsetForConsumer)
 import Kafkaesque.Request.KafkaRequest
-       (APIVersion0, Request(OffsetFetchRequestV0),
-        Response(OffsetFetchResponseV0))
+       (Request(OffsetFetchRequestV0), Response(OffsetFetchResponseV0))
 
-offsetFetchRequestV0 :: Parser (Request OffsetFetch APIVersion0)
+offsetFetchRequestV0 :: Parser (Request OffsetFetch V0)
 offsetFetchRequestV0 =
   let topic =
         (\a b -> (a, b)) <$> kafkaString <*>
@@ -30,8 +30,8 @@ offsetFetchRequestV0 =
 
 respondToRequestV0 ::
      Pool.Pool PG.Connection
-  -> Request OffsetFetch APIVersion0
-  -> IO (Response OffsetFetch APIVersion0)
+  -> Request OffsetFetch V0
+  -> IO (Response OffsetFetch V0)
 respondToRequestV0 pool (OffsetFetchRequestV0 cgId topics) = do
   let getPartitionResponse conn topicName partitionId = do
         topicPartitionRes <- getTopicPartition conn topicName partitionId

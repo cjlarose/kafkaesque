@@ -16,10 +16,11 @@ import Kafkaesque.KafkaError
 import Kafkaesque.Parsers
        (kafkaArray, kafkaString, signedInt32be, signedInt64be)
 import Kafkaesque.Protocol.ApiKey (Offsets)
+import Kafkaesque.Protocol.ApiVersion (V0)
 import Kafkaesque.Queries
        (getEarliestOffset, getNextOffset, getTopicPartition)
 import Kafkaesque.Request.KafkaRequest
-       (APIVersion0, OffsetListRequestPartition,
+       (OffsetListRequestPartition,
         OffsetListRequestTimestamp(EarliestOffset, LatestOffset,
                                    OffsetListTimestamp),
         OffsetListRequestTopic, OffsetListResponsePartition,
@@ -50,7 +51,7 @@ offsetsRequestTopic =
   (\t xs -> (t, xs)) <$> kafkaString <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestPartition)
 
-offsetsRequestV0 :: Parser (Request Offsets APIVersion0)
+offsetsRequestV0 :: Parser (Request Offsets V0)
 offsetsRequestV0 =
   OffsetsRequestV0 <$> signedInt32be <*>
   (fromMaybe [] <$> kafkaArray offsetsRequestTopic)
@@ -97,9 +98,7 @@ fetchTopicOffsets conn (topicName, partitions) = do
   return (topicName, partitionResponses)
 
 respondToRequestV0 ::
-     Pool.Pool PG.Connection
-  -> Request Offsets APIVersion0
-  -> IO (Response Offsets APIVersion0)
+     Pool.Pool PG.Connection -> Request Offsets V0 -> IO (Response Offsets V0)
 respondToRequestV0 pool (OffsetsRequestV0 _ topics) = do
   topicResponses <-
     Pool.withResource pool (\conn -> mapM (fetchTopicOffsets conn) topics)
