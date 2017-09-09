@@ -13,11 +13,11 @@ import Kafkaesque.Parsers (kafkaRequest)
 import qualified Kafkaesque.Request.ApiVersions as ApiVersions
 import qualified Kafkaesque.Request.Fetch as Fetch
 import Kafkaesque.Request.KafkaRequest (Request(..), Response(..))
+import qualified Kafkaesque.Request.Metadata as Metadata
 import qualified Kafkaesque.Request.OffsetCommit as OffsetCommit
 import qualified Kafkaesque.Request.OffsetFetch as OffsetFetch
 import qualified Kafkaesque.Request.OffsetList as Offsets
 import qualified Kafkaesque.Request.Produce as Produce
-import qualified Kafkaesque.Request.TopicMetadata as Metadata
 import Kafkaesque.Response (writeResponse)
 
 makeHandler ::

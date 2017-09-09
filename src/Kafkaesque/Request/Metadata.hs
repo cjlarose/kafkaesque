@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Kafkaesque.Request.TopicMetadata
+module Kafkaesque.Request.Metadata
   ( metadataRequestV0
   , respondToRequestV0
   ) where
