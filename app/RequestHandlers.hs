@@ -16,7 +16,7 @@ import Kafkaesque.Request.KafkaRequest (Request(..), Response(..))
 import qualified Kafkaesque.Request.Metadata as Metadata
 import qualified Kafkaesque.Request.OffsetCommit as OffsetCommit
 import qualified Kafkaesque.Request.OffsetFetch as OffsetFetch
-import qualified Kafkaesque.Request.OffsetList as Offsets
+import qualified Kafkaesque.Request.Offsets as Offsets
 import qualified Kafkaesque.Request.Produce as Produce
 import Kafkaesque.Response (writeResponse)
 

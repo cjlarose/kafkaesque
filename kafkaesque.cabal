@@ -26,7 +26,7 @@ library
                      , Kafkaesque.Parsers
                      , Kafkaesque.Request.Produce
                      , Kafkaesque.Request.Fetch
-                     , Kafkaesque.Request.OffsetList
+                     , Kafkaesque.Request.Offsets
                      , Kafkaesque.Request.Metadata
                      , Kafkaesque.Request.OffsetCommit
                      , Kafkaesque.Request.OffsetFetch

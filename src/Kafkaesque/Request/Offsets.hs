@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Kafkaesque.Request.OffsetList
+module Kafkaesque.Request.Offsets
   ( offsetsRequestV0
   , respondToRequestV0
   ) where
