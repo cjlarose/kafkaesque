@@ -1,14 +1,13 @@
 {-# LANGUAGE GADTs #-}
 
 module Kafkaesque.Response
-  ( writeResponse
+  ( putResponse
   , putKafkaNullabeBytes
   , putInt32be
   , putInt64be
   , putKafkaString
   ) where
 
-import Data.ByteString (ByteString)
 import qualified Data.ByteString (length)
 import Data.Serialize.Put (Put, putByteString, runPut)
 import Kafkaesque.Request.KafkaRequest
@@ -85,6 +84,3 @@ putResponse (ApiVersionsResponseV0 err versions) =
   let putVersion (apiKey, minVersion, maxVersion) =
         putInt16be apiKey *> putInt16be minVersion *> putInt16be maxVersion
   in putKakfaError err *> putKafkaArray putVersion versions
-
-writeResponse :: Response k v -> ByteString
-writeResponse = runPut . putResponse

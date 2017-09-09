@@ -18,7 +18,7 @@ import qualified Kafkaesque.Request.OffsetCommit as OffsetCommit
 import qualified Kafkaesque.Request.OffsetFetch as OffsetFetch
 import qualified Kafkaesque.Request.Offsets as Offsets
 import qualified Kafkaesque.Request.Produce as Produce
-import Kafkaesque.Response (writeResponse)
+import Kafkaesque.Response (putResponse)
 
 makeHandler ::
      Parser (Request k v)
@@ -30,7 +30,7 @@ makeHandler ::
 makeHandler parser respond correlationId pool request = do
   let parseResult = parseOnly (parser <* endOfInput)
       putCorrelationId = putWord32be . fromIntegral
-      putResponseBody = putByteString . writeResponse
+      putResponseBody = putByteString . runPut . putResponse
       putFramedResponse resp =
         putCorrelationId correlationId *> putResponseBody resp
       generateResponse req = (runPut . putFramedResponse) <$> respond pool req
